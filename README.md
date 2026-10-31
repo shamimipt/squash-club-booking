@@ -1,7 +1,6 @@
-<<<<<<< HEAD
-# Squash Club Booking & Management System
 
-> **A modern, production-ready WordPress plugin for managing squash club bookings, private coaching, summer camps, waitlists, payments, and notifications.**
+# Squash Club Booking & Management System
+ **A modern, production-ready WordPress plugin for managing squash club bookings, private coaching, summer camps, waitlists, payments, and notifications.**
 
 ---
 
@@ -244,6 +243,4 @@ Administrators have full access by default. Custom roles (e.g. `Coach`, `Front D
    - Summer Camps: `[scb_summer_camp]`
    - Booking Status: `[scb_booking_status]`
    - My Bookings: `[scb_my_bookings]`
-=======
 # squash-club-booking
->>>>>>> 6f0d6d641802372c4832c492d7875f94c622d359
