@@ -76,6 +76,10 @@ class Assets {
                 'pluginUrl'     => SCB_PLUGIN_URL,
                 'dateFormat'    => \SquashClubBooking\Core\Settings::get( 'date_format', 'Y-m-d' ),
                 'timeFormat'    => \SquashClubBooking\Core\Settings::get( 'time_format', 'g:i A' ),
+                'defaultPrivatePrice'     => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_private', 80.00 ) ),
+                'defaultSemiPrivatePrice' => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_semi_private', 40.00 ) ),
+                'clinicPriceJunior'       => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_junior', 25.00 ) ),
+                'clinicPriceAdult'        => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_adult', 30.00 ) ),
                 'strings'       => $this->get_admin_js_strings(),
             ]
         );
@@ -144,6 +148,10 @@ class Assets {
                     'email' => $current_user->user_email,
                     'phone' => get_user_meta( $current_user->ID, 'billing_phone', true ),
                 ] : null,
+                'privatePrice'      => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_private', 80.00 ) ),
+                'semiPrivatePrice'  => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_semi_private', 40.00 ) ),
+                'clinicPriceJunior' => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_junior', 25.00 ) ),
+                'clinicPriceAdult'  => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_adult', 30.00 ) ),
                 'strings'     => $this->get_frontend_js_strings(),
             ]
         );

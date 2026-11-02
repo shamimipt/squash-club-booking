@@ -32,6 +32,14 @@ class Schema {
         }
 
         // Record schema version.
+        // Add hourly_rate column if missing
+        if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$wpdb->prefix}scb_coaches LIKE 'hourly_rate'" ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}scb_coaches ADD COLUMN hourly_rate DECIMAL(10,2) DEFAULT NULL AFTER lesson_types" );
+        }
+        if ( ! $wpdb->get_var( "SHOW COLUMNS FROM {$wpdb->prefix}scb_coaches LIKE 'semi_private_rate'" ) ) {
+            $wpdb->query( "ALTER TABLE {$wpdb->prefix}scb_coaches ADD COLUMN semi_private_rate DECIMAL(10,2) DEFAULT NULL AFTER hourly_rate" );
+        }
+
         update_option( 'scb_db_version', SCB_DB_VERSION );
     }
 
@@ -71,6 +79,8 @@ class Schema {
                 bio           LONGTEXT                     DEFAULT NULL,
                 specialties   TEXT                         DEFAULT NULL,
                 lesson_types  VARCHAR(100)        NOT NULL DEFAULT 'private,semi_private',
+                hourly_rate   DECIMAL(10,2)                DEFAULT NULL,
+                semi_private_rate DECIMAL(10,2)            DEFAULT NULL,
                 status        ENUM('active','inactive','on_leave') NOT NULL DEFAULT 'active',
                 display_order SMALLINT            NOT NULL DEFAULT 0,
                 created_at    DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,

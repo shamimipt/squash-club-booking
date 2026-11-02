@@ -25,6 +25,10 @@ const SCB = (function ($) {
         pluginUrl: _admin.pluginUrl || '',
         adminUrl: '',
         strings: _admin.strings || {},
+        defaultPrivatePrice: _admin.defaultPrivatePrice || 80,
+        defaultSemiPrivatePrice: _admin.defaultSemiPrivatePrice || 40,
+        clinicPriceJunior: _admin.clinicPriceJunior || 25,
+        clinicPriceAdult: _admin.clinicPriceAdult || 30,
         dateFormat: _admin.dateFormat || 'YYYY-MM-DD',
         timeFormat: _admin.timeFormat || 'g:i A',
     };
@@ -634,6 +638,9 @@ const SCB = (function ($) {
     // ── Dashboard View ───────────────────────────────────────────────────────
     const DashboardView = {
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             const userName = document.getElementById('scb-app')?.dataset?.userName || 'Club Admin';
             const todayFormatted = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
@@ -856,9 +863,12 @@ const SCB = (function ($) {
 
     // ── Bookings View ────────────────────────────────────────────────────────
     const BookingsView = {
-        state: { page: 1, perPage: 20, search: '', serviceType: '', bookingStatus: '', paymentStatus: '', orderby: 'created_at', order: 'DESC', total: 0 },
+        state: { page: 1, perPage: 20, search: '', serviceType: '', bookingStatus: '', paymentStatus: '', coachId: '', orderby: 'created_at', order: 'DESC', total: 0 },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -879,6 +889,12 @@ const SCB = (function ($) {
                         <input type="search" id="scb-bookings-search" placeholder="Search by name, email, ref…" value="${Utils.escHtml(this.state.search)}">
                     </div>
                     <div class="scb-filter-group">
+                        <select class="scb-select" id="scb-bookings-coach" style="width:auto;">
+                            <option value="" ${!this.state.coachId ? 'selected' : ''}>All Coaches</option>
+                            ${(this.coaches || []).map(c => `
+                                <option value="${c.id}" ${this.state.coachId == c.id ? 'selected' : ''}>Coach: ${Utils.escHtml(c.first_name + ' ' + (c.last_name || ''))}</option>
+                            `).join('')}
+                        </select>
                         <select class="scb-select" id="scb-bookings-service" style="width:auto;">
                             <option value="" ${!this.state.serviceType ? 'selected' : ''}>All Services</option>
                             <option value="clinic" ${this.state.serviceType === 'clinic' ? 'selected' : ''}>Sunday Clinic</option>
@@ -914,7 +930,7 @@ const SCB = (function ($) {
                             </tr>
                         </thead>
                         <tbody id="scb-bookings-tbody">
-                            ${Utils.skeletonRows(9)}
+                            ${Utils.skeletonRows(10)}
                         </tbody>
                     </table>
                 </div>
@@ -943,6 +959,7 @@ const SCB = (function ($) {
             return `
                 ${ViewUtils.sortHeader('Reference', 'booking_ref', k, o)}
                 ${ViewUtils.sortHeader('Customer', 'customer_name', k, o)}
+                ${ViewUtils.sortHeader('Coach', 'coach_name', k, o)}
                 ${ViewUtils.sortHeader('Service', 'service_type', k, o)}
                 ${ViewUtils.sortHeader('Date/Time', 'booking_date', k, o)}
                 ${ViewUtils.sortHeader('Status', 'booking_status', k, o)}
@@ -955,6 +972,8 @@ const SCB = (function ($) {
 
         _bindFilters(container) {
             const search = document.getElementById('scb-bookings-search');
+            const coach = document.getElementById('scb-bookings-coach');
+            if (coach) coach.addEventListener('change', () => { this.state.coachId = coach.value; reload(); });
             const service = document.getElementById('scb-bookings-service');
             const status = document.getElementById('scb-bookings-status');
             const payment = document.getElementById('scb-bookings-payment');
@@ -972,7 +991,7 @@ const SCB = (function ($) {
         async loadBookings() {
             const tbody = document.getElementById('scb-bookings-tbody');
             if (!tbody) return;
-            tbody.innerHTML = Utils.skeletonRows(9);
+            tbody.innerHTML = Utils.skeletonRows(10);
 
             try {
                 const res = await Api.get('bookings', {
@@ -980,6 +999,7 @@ const SCB = (function ($) {
                     per_page: this.state.perPage,
                     search: this.state.search,
                     service_type: this.state.serviceType,
+                    coach_id: this.state.coachId,
                     booking_status: this.state.bookingStatus,
                     payment_status: this.state.paymentStatus,
                     orderby: this.state.orderby,
@@ -990,7 +1010,7 @@ const SCB = (function ($) {
                 this.state.total = res.data?.total || 0;
 
                 if (!items.length) {
-                    tbody.innerHTML = `<tr><td colspan="9"><div class="scb-empty-state">
+                    tbody.innerHTML = `<tr><td colspan="10"><div class="scb-empty-state">
                         <div class="scb-empty-state__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                         <div class="scb-empty-state__title">No bookings found</div>
                         <div class="scb-empty-state__desc">Try adjusting your search or filters.</div>
@@ -1007,7 +1027,7 @@ const SCB = (function ($) {
                     });
                 }
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="9"><div class="scb-empty-state scb-text-error">Error: ${Utils.escHtml(err.message)}</div></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10"><div class="scb-empty-state scb-text-error">Error: ${Utils.escHtml(err.message)}</div></td></tr>`;
                 Toast.error('Could not load bookings', err.message);
             }
         },
@@ -1029,6 +1049,23 @@ const SCB = (function ($) {
 
             const dateDisplay = bookingDate ? Utils.formatDate(bookingDate) : '—';
 
+            let coachDisplay = '<span style="color:var(--scb-text-muted);">—</span>';
+            if (b.coach_first_name) {
+                const coachName = `${b.coach_first_name} ${b.coach_last_name || ''}`.trim();
+                const initial = b.coach_first_name[0] || 'C';
+                coachDisplay = `
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:700;flex-shrink:0;">${Utils.escHtml(initial)}</span>
+                        <div>
+                            <div style="font-weight:600;font-size:13px;line-height:1.2;">${Utils.escHtml(coachName)}</div>
+                            ${b.coach_hourly_rate ? `<div style="font-size:11px;color:var(--scb-text-muted);">${Utils.formatCurrency(b.coach_hourly_rate)}/hr</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (b.service_type === 'clinic' || b.clinic_slot_id) {
+                coachDisplay = `<span class="scb-badge scb-badge--muted" style="font-size:11px;">Club Clinic</span>`;
+            }
+
             return `
                 <tr data-booking-id="${b.id}">
                     <td><code style="font-size:11px;">${Utils.escHtml(b.booking_ref)}</code></td>
@@ -1036,6 +1073,7 @@ const SCB = (function ($) {
                         <div style="font-weight:600;">${Utils.escHtml(b.customer_name)}</div>
                         <div style="font-size:12px;color:var(--scb-text-muted);">${Utils.escHtml(b.customer_email)}</div>
                     </td>
+                    <td>${coachDisplay}</td>
                     <td>${Utils.escHtml(serviceLabel[b.service_type] || b.service_type)}</td>
                     <td>
                         <div style="font-weight:500;">${Utils.escHtml(dateDisplay)}</div>
@@ -1144,6 +1182,23 @@ const SCB = (function ($) {
                     }
                 }
                 const dateDisplay = bookingDate ? Utils.formatDate(bookingDate) : '—';
+
+            let coachDisplay = '<span style="color:var(--scb-text-muted);">—</span>';
+            if (b.coach_first_name) {
+                const coachName = `${b.coach_first_name} ${b.coach_last_name || ''}`.trim();
+                const initial = b.coach_first_name[0] || 'C';
+                coachDisplay = `
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:700;flex-shrink:0;">${Utils.escHtml(initial)}</span>
+                        <div>
+                            <div style="font-weight:600;font-size:13px;line-height:1.2;">${Utils.escHtml(coachName)}</div>
+                            ${b.coach_hourly_rate ? `<div style="font-size:11px;color:var(--scb-text-muted);">${Utils.formatCurrency(b.coach_hourly_rate)}/hr</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (b.service_type === 'clinic' || b.clinic_slot_id) {
+                coachDisplay = `<span class="scb-badge scb-badge--muted" style="font-size:11px;">Club Clinic</span>`;
+            }
                 const dateTimeFull = timeStr ? `${dateDisplay} (${timeStr})` : dateDisplay;
 
                 Modal.body.innerHTML = `
@@ -1392,6 +1447,9 @@ const SCB = (function ($) {
         state: { dateFrom: '', dateTo: '', category: '', status: '', orderby: 'slot_date', order: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -1632,7 +1690,7 @@ const SCB = (function ($) {
                     </div>
                     <div class="scb-form-group">
                         <label class="scb-form-label" for="scb-new-slot-price">Price ($)</label>
-                        <input type="number" step="0.5" class="scb-input" id="scb-new-slot-price" value="25.00">
+                        <input type="number" step="0.5" class="scb-input" id="scb-new-slot-price" value="${CONFIG.clinicPriceJunior || 20.00}">
                     </div>
                 `,
                 footer: `
@@ -1640,6 +1698,16 @@ const SCB = (function ($) {
                     <button class="scb-btn scb-btn--primary" id="scb-submit-new-slot">Create Slot</button>
                 `
             });
+
+            const slotCatSelect = document.getElementById('scb-new-slot-cat');
+            if (slotCatSelect) {
+                slotCatSelect.addEventListener('change', () => {
+                    const priceInput = document.getElementById('scb-new-slot-price');
+                    if (priceInput) {
+                        priceInput.value = slotCatSelect.value === 'adult' ? (CONFIG.clinicPriceAdult || 25.00) : (CONFIG.clinicPriceJunior || 20.00);
+                    }
+                });
+            }
 
             document.getElementById('scb-submit-new-slot')?.addEventListener('click', async () => {
                 const date = document.getElementById('scb-new-slot-date')?.value;
@@ -1750,6 +1818,9 @@ const SCB = (function ($) {
     // ── Private Lessons View ──────────────────────────────────────────────────
     const PrivateLessonsView = {
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             BookingsView.state.serviceType = 'lessons';
             await BookingsView.render(container);
             const title = container.querySelector('.scb-page-title');
@@ -1772,6 +1843,9 @@ const SCB = (function ($) {
         state: { viewMode: 'cards', orderby: 'display_order', order: 'ASC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -1936,7 +2010,10 @@ const SCB = (function ($) {
                                                 </div>
                                             </td>
                                             <td>${Utils.escHtml(c.email || '—')}</td>
-                                            <td><strong>${Utils.formatCurrency(c.hourly_rate || 60)}/hr</strong></td>
+                                            <td>
+                                                <div style="font-size:12px;"><strong>Priv:</strong> ${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? `<strong>${Utils.formatCurrency(c.hourly_rate)}/hr</strong> <span class="scb-badge scb-badge--info" style="font-size:9px;padding:1px 4px;">Custom</span>` : `<span style="color:var(--scb-text-muted);">${Utils.formatCurrency(CONFIG.defaultPrivatePrice)}/hr</span>`}</div>
+                                                <div style="font-size:12px;margin-top:3px;"><strong>Semi:</strong> ${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? `<strong>${Utils.formatCurrency(c.semi_private_rate)}/hr</strong> <span class="scb-badge scb-badge--info" style="font-size:9px;padding:1px 4px;">Custom</span>` : `<span style="color:var(--scb-text-muted);">${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}/hr</span>`}</div>
+                                            </td>
                                             <td><span class="scb-badge scb-badge--info">${c.total_bookings_count || 0} lessons</span></td>
                                             <td>${Utils.statusBadge(c.status, 'coach')}</td>
                                             <td><span class="scb-badge scb-badge--muted">#${c.display_order || 0}</span></td>
@@ -1976,7 +2053,8 @@ const SCB = (function ($) {
                                         </div>
                                         <p style="font-size:13px;color:var(--scb-text);line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${Utils.escHtml(c.bio || 'No bio provided.')}</p>
                                         <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:6px;"><strong>Specialties:</strong> ${Utils.escHtml(c.specialties || 'All levels')}</div>
-                                        <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:6px;"><strong>Rate:</strong> ${Utils.formatCurrency(c.hourly_rate || 60)}/hr</div>
+                                        <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:3px;"><strong>Private:</strong> ${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? `${Utils.formatCurrency(c.hourly_rate)}/hr (Custom)` : `${Utils.formatCurrency(CONFIG.defaultPrivatePrice)}/hr (Default)`}</div>
+                                        <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:6px;"><strong>Semi-Private:</strong> ${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? `${Utils.formatCurrency(c.semi_private_rate)}/hr (Custom)` : `${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}/hr (Default)`}</div>
                                         <div style="font-size:12px;color:var(--scb-text-muted);"><strong>Lessons:</strong> ${c.total_bookings_count || 0} completed</div>
                                     </div>
                                     <div class="scb-card__footer" style="display:flex;gap:8px;border-top:1px solid var(--scb-border);padding:12px 16px;background:var(--scb-surface-subtle);">
@@ -2091,6 +2169,17 @@ const SCB = (function ($) {
                         <label class="scb-form-label">Photo URL</label>
                         <input type="url" class="scb-input" id="scb-c-photo" placeholder="https://...">
                     </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="scb-form-group">
+                            <label class="scb-form-label">Private Rate ($/hr)</label>
+                            <input type="number" step="0.5" min="0" class="scb-input" id="scb-c-rate" placeholder="Default: ${Utils.formatCurrency(CONFIG.defaultPrivatePrice)}/hr">
+                        </div>
+                        <div class="scb-form-group">
+                            <label class="scb-form-label">Semi-Private Rate ($/hr)</label>
+                            <input type="number" step="0.5" min="0" class="scb-input" id="scb-c-semi-rate" placeholder="Default: ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}/hr">
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:var(--scb-text-muted);margin:-8px 0 12px;">Leave blank to use club default rates (${Utils.formatCurrency(CONFIG.defaultPrivatePrice)} / ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}).</div>
                     <div class="scb-form-group">
                         <label class="scb-form-label">Specialties</label>
                         <input type="text" class="scb-input" id="scb-c-spec" placeholder="e.g. Deceptive Drops, Footwork">
@@ -2127,6 +2216,8 @@ const SCB = (function ($) {
                         email: document.getElementById('scb-c-email')?.value,
                         phone: document.getElementById('scb-c-phone')?.value,
                         photo_url: document.getElementById('scb-c-photo')?.value,
+                        hourly_rate: document.getElementById('scb-c-rate')?.value ? parseFloat(document.getElementById('scb-c-rate').value) : null,
+                        semi_private_rate: document.getElementById('scb-c-semi-rate')?.value ? parseFloat(document.getElementById('scb-c-semi-rate').value) : null,
                         specialties: document.getElementById('scb-c-spec')?.value,
                         bio: document.getElementById('scb-c-bio')?.value,
                     });
@@ -2175,6 +2266,17 @@ const SCB = (function ($) {
                                 </select>
                             </div>
                         </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">Private Rate ($/hr)</label>
+                                <input type="number" step="0.5" min="0" class="scb-input" id="scb-ec-rate" value="${c.hourly_rate ? parseFloat(c.hourly_rate) : ''}" placeholder="Default: ${Utils.formatCurrency(CONFIG.defaultPrivatePrice)}/hr">
+                            </div>
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">Semi-Private Rate ($/hr)</label>
+                                <input type="number" step="0.5" min="0" class="scb-input" id="scb-ec-semi-rate" value="${c.semi_private_rate ? parseFloat(c.semi_private_rate) : ''}" placeholder="Default: ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}/hr">
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:var(--scb-text-muted);margin:-8px 0 12px;">Set specific custom rates, or leave blank to use club default rates (${Utils.formatCurrency(CONFIG.defaultPrivatePrice)} / ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}).</div>
                         <div class="scb-form-group">
                             <label class="scb-form-label">Photo URL</label>
                             <input type="url" class="scb-input" id="scb-ec-photo" value="${Utils.escHtml(c.photo_url || '')}">
@@ -2208,6 +2310,8 @@ const SCB = (function ($) {
                             email: document.getElementById('scb-ec-email')?.value,
                             status: document.getElementById('scb-ec-status')?.value,
                             photo_url: document.getElementById('scb-ec-photo')?.value,
+                            hourly_rate: document.getElementById('scb-ec-rate')?.value !== '' ? parseFloat(document.getElementById('scb-ec-rate').value) : null,
+                            semi_private_rate: document.getElementById('scb-ec-semi-rate')?.value !== '' ? parseFloat(document.getElementById('scb-ec-semi-rate').value) : null,
                             specialties: document.getElementById('scb-ec-spec')?.value,
                             bio: document.getElementById('scb-ec-bio')?.value,
                         });
@@ -2288,6 +2392,9 @@ const SCB = (function ($) {
         state: { clinicOrder: 'ASC', lessonSort: 'booking_date', lessonOrder: 'ASC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -2412,6 +2519,9 @@ const SCB = (function ($) {
         state: { status: '', orderby: 'position', order: 'ASC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -2467,6 +2577,7 @@ const SCB = (function ($) {
             return `
                 ${ViewUtils.sortHeader('Position', 'position', k, o)}
                 ${ViewUtils.sortHeader('Customer', 'customer_name', k, o)}
+                ${ViewUtils.sortHeader('Coach', 'coach_name', k, o)}
                 ${ViewUtils.sortHeader('Service', 'service_type', k, o)}
                 ${ViewUtils.sortHeader('Session / Date', 'slot_date', k, o)}
                 ${ViewUtils.sortHeader('Status', 'status', k, o)}
@@ -2569,6 +2680,9 @@ const SCB = (function ($) {
         state: { viewMode: 'cards', orderby: 'start_date', order: 'ASC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3056,6 +3170,9 @@ const SCB = (function ($) {
         state: { orderby: 'created_at', order: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3150,6 +3267,9 @@ const SCB = (function ($) {
         state: { orderby: 'created_at', order: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3208,6 +3328,7 @@ const SCB = (function ($) {
             return `
                 ${ViewUtils.sortHeader('Reference', 'reference', k, o)}
                 ${ViewUtils.sortHeader('Customer', 'customer_name', k, o)}
+                ${ViewUtils.sortHeader('Coach', 'coach_name', k, o)}
                 ${ViewUtils.sortHeader('Service', 'service_type', k, o)}
                 ${ViewUtils.sortHeader('Amount', 'amount', k, o)}
                 ${ViewUtils.sortHeader('Order ID', 'wc_order_id', k, o)}
@@ -3263,6 +3384,9 @@ const SCB = (function ($) {
         state: { orderby: 'last_booking_date', order: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3347,6 +3471,9 @@ const SCB = (function ($) {
         state: { orderby: 'sent_at', order: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3432,6 +3559,9 @@ const SCB = (function ($) {
         state: { coachSort: 'revenue', coachOrder: 'DESC', serviceSort: 'total_amount', serviceOrder: 'DESC' },
 
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>
@@ -3580,6 +3710,9 @@ const SCB = (function ($) {
     // ── Settings View ─────────────────────────────────────────────────────────
     const SettingsView = {
         async render(container) {
+            if (!this.coaches) {
+                this.coaches = await Api.get('coaches').then(r => r.data?.items || []).catch(() => []);
+            }
             container.innerHTML = `
                 <div class="scb-page-header">
                     <div>

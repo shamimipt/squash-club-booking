@@ -206,6 +206,18 @@ class Settings {
     /** @var bool Whether autoloaded settings have been populated */
     private static bool $autoloaded = false;
 
+    /** @var array Key aliases for backward compatibility */
+    private static array $aliases = [
+        'private_lesson_price'      => 'lesson_price_private',
+        'semi_private_lesson_price' => 'lesson_price_semi_private',
+        'clinic_capacity'           => 'clinic_capacity_default',
+        'lesson_price_private'      => 'private_lesson_price',
+        'lesson_price_semi_private' => 'semi_private_lesson_price',
+        'clinic_capacity_default'   => 'clinic_capacity',
+        'lesson_duration'           => 'lesson_duration_default',
+        'lesson_duration_default'   => 'lesson_duration',
+    ];
+
     /**
      * Load all autoloaded settings into memory in a single query.
      */
@@ -259,8 +271,15 @@ class Settings {
     public static function get( string $key, $default = null ) {
         self::load_autoloaded();
 
-        if ( array_key_exists( $key, self::$cache ) ) {
+        if ( array_key_exists( $key, self::$cache ) && self::$cache[ $key ] !== null ) {
             return self::$cache[ $key ];
+        }
+
+        if ( isset( self::$aliases[ $key ] ) ) {
+            $alias = self::$aliases[ $key ];
+            if ( array_key_exists( $alias, self::$cache ) && self::$cache[ $alias ] !== null ) {
+                return self::$cache[ $alias ];
+            }
         }
 
         global $wpdb;
@@ -271,6 +290,15 @@ class Settings {
             )
         );
 
+        if ( null === $row && isset( self::$aliases[ $key ] ) ) {
+            $row = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT setting_value FROM {$wpdb->prefix}scb_settings WHERE setting_key = %s LIMIT 1",
+                    self::$aliases[ $key ]
+                )
+            );
+        }
+
         if ( null === $row ) {
             self::$cache[ $key ] = $default;
             return $default;
@@ -278,6 +306,9 @@ class Settings {
 
         $value = self::decode_value( $row->setting_value );
         self::$cache[ $key ] = $value;
+        if ( isset( self::$aliases[ $key ] ) ) {
+            self::$cache[ self::$aliases[ $key ] ] = $value;
+        }
 
         return $value;
     }

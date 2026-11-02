@@ -47,6 +47,7 @@ class CoachController {
             'email'                => 'c.email',
             'status'               => 'c.status',
             'display_order'        => 'c.display_order',
+            'hourly_rate'          => 'c.hourly_rate',
             'total_bookings_count' => 'total_bookings_count',
             'created_at'           => 'c.created_at',
         ];
@@ -113,6 +114,8 @@ class CoachController {
         $lesson_types = sanitize_text_field( $r->get_param( 'lesson_types' ) ?? 'private,semi_private' );
         $status       = sanitize_key( $r->get_param( 'status' ) ?? 'active' );
         $order        = absint( $r->get_param( 'display_order' ) ?? 0 );
+        $hourly_rate       = ( $r->get_param( 'hourly_rate' ) !== null && $r->get_param( 'hourly_rate' ) !== '' ) ? floatval( $r->get_param( 'hourly_rate' ) ) : null;
+        $semi_private_rate = ( $r->get_param( 'semi_private_rate' ) !== null && $r->get_param( 'semi_private_rate' ) !== '' ) ? floatval( $r->get_param( 'semi_private_rate' ) ) : null;
 
         if ( empty( $first_name ) || empty( $last_name ) ) {
             return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'Please provide both first and last name.', 'squash-club-booking' ) ], 400 );
@@ -139,10 +142,12 @@ class CoachController {
                 'specialties'   => $specialties,
                 'lesson_types'  => $lesson_types,
                 'status'        => $status,
-                'display_order' => $order,
-                'created_at'    => current_time( 'mysql' ),
+                'hourly_rate'       => $hourly_rate,
+                'semi_private_rate' => $semi_private_rate,
+                'display_order'     => $order,
+                'created_at'        => current_time( 'mysql' ),
             ],
-            [ '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s' ]
+            [ '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%f', '%f', '%d', '%s' ]
         );
 
         $coach_id = $wpdb->insert_id;
@@ -232,6 +237,24 @@ class CoachController {
         if ( isset( $params['display_order'] ) ) {
             $fields['display_order'] = absint( $params['display_order'] );
             $formats[] = '%d';
+        }
+        if ( array_key_exists( 'hourly_rate', $params ) ) {
+            if ( $params['hourly_rate'] === '' || $params['hourly_rate'] === null ) {
+                $fields['hourly_rate'] = null;
+                $formats[] = '%s';
+            } else {
+                $fields['hourly_rate'] = floatval( $params['hourly_rate'] );
+                $formats[] = '%f';
+            }
+        }
+        if ( array_key_exists( 'semi_private_rate', $params ) ) {
+            if ( $params['semi_private_rate'] === '' || $params['semi_private_rate'] === null ) {
+                $fields['semi_private_rate'] = null;
+                $formats[] = '%s';
+            } else {
+                $fields['semi_private_rate'] = floatval( $params['semi_private_rate'] );
+                $formats[] = '%f';
+            }
         }
 
         if ( empty( $fields ) ) {

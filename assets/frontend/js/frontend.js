@@ -15,8 +15,10 @@
         currentUser: (typeof scbFrontend !== 'undefined' && scbFrontend.currentUser) ? scbFrontend.currentUser : null,
         loginUrl: (typeof scbFrontend !== 'undefined' && scbFrontend.loginUrl) ? scbFrontend.loginUrl : '/my-account/',
         registerUrl: (typeof scbFrontend !== 'undefined' && scbFrontend.registerUrl) ? scbFrontend.registerUrl : '/my-account/',
-        privatePrice: (typeof scbFrontend !== 'undefined' && scbFrontend.privatePrice) ? scbFrontend.privatePrice : 65,
-        semiPrivatePrice: (typeof scbFrontend !== 'undefined' && scbFrontend.semiPrivatePrice) ? scbFrontend.semiPrivatePrice : 90,
+        privatePrice: (typeof scbFrontend !== 'undefined' && scbFrontend.privatePrice) ? scbFrontend.privatePrice : 80,
+        semiPrivatePrice: (typeof scbFrontend !== 'undefined' && scbFrontend.semiPrivatePrice) ? scbFrontend.semiPrivatePrice : 40,
+        clinicPriceJunior: (typeof scbFrontend !== 'undefined' && scbFrontend.clinicPriceJunior) ? scbFrontend.clinicPriceJunior : 25,
+        clinicPriceAdult: (typeof scbFrontend !== 'undefined' && scbFrontend.clinicPriceAdult) ? scbFrontend.clinicPriceAdult : 30,
     };
 
     /**
@@ -486,6 +488,7 @@
                                     <span class="scb-coach-card__badge">Coach</span>
                                     <div class="scb-coach-card__name">${Utils.escHtml(c.first_name)} ${Utils.escHtml(c.last_name)}</div>
                                     <div class="scb-coach-card__specialties">${Utils.escHtml(c.specialties || '')}</div>
+                                    <div class="scb-coach-card__rate" style="font-size:11px;font-weight:700;color:var(--scb-fe-navy, #0f172a);margin-top:4px;">1-on-1: $${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? parseFloat(c.hourly_rate) : CONFIG.privatePrice}/hr · Semi: $${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? parseFloat(c.semi_private_rate) : CONFIG.semiPrivatePrice}/hr</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -565,6 +568,7 @@
 
             const dateInput = document.getElementById('scb-lesson-date-input');
             dateInput.value = this.selectedDate;
+            this.updatePriceOptions();
 
             // Bind coaches.
             container.querySelectorAll('.scb-coach-card').forEach(card => {
@@ -572,6 +576,7 @@
                     container.querySelectorAll('.scb-coach-card').forEach(c => c.classList.remove('is-selected'));
                     card.classList.add('is-selected');
                     this.selectedCoachId = parseInt(card.dataset.id, 10);
+                    this.updatePriceOptions();
                     this.loadCoachSlots();
                 });
             });
@@ -591,6 +596,25 @@
             document.getElementById('scb-lesson-form').addEventListener('submit', (e) => this.submitLesson(e));
 
             this.loadCoachSlots();
+        },
+
+        updatePriceOptions() {
+            const select = document.getElementById('scb-lesson-type-select');
+            if (!select) return;
+            const coach = this.coaches.find(c => c.id == this.selectedCoachId);
+            const privRate = (coach && coach.hourly_rate && parseFloat(coach.hourly_rate) > 0)
+                ? parseFloat(coach.hourly_rate)
+                : CONFIG.privatePrice;
+            const semiRate = (coach && coach.semi_private_rate && parseFloat(coach.semi_private_rate) > 0)
+                ? parseFloat(coach.semi_private_rate)
+                : ((coach && coach.hourly_rate && parseFloat(coach.hourly_rate) > 0)
+                    ? Math.round(privRate * 1.38)
+                    : CONFIG.semiPrivatePrice);
+
+            select.innerHTML = `
+                <option value="private" ${this.selectedType === 'private' ? 'selected' : ''}>Private Lesson (1-on-1) — $${privRate}/hr</option>
+                <option value="semi_private" ${this.selectedType === 'semi_private' ? 'selected' : ''}>Semi-Private Lesson (2-on-1) — $${semiRate}/hr</option>
+            `;
         },
 
         async loadCoachSlots() {

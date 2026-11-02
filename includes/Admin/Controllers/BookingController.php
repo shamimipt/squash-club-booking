@@ -102,6 +102,7 @@ class BookingController
             'booking_ref'    => 'b.booking_ref',
             'customer_name'  => 'b.customer_name',
             'customer_email' => 'b.customer_email',
+            'coach_name'     => 'c.first_name',
             'service_type'   => 'b.service_type',
             'booking_date'   => 'COALESCE(b.lesson_date, cs.slot_date, b.created_at)',
             'booking_status' => 'b.booking_status',
@@ -113,7 +114,7 @@ class BookingController
         $order_by_sql = $allowed_sorts[$orderby_param] ?? 'b.created_at';
 
         $query = "SELECT b.*,
-                         c.first_name AS coach_first_name, c.last_name AS coach_last_name,
+                         c.first_name AS coach_first_name, c.last_name AS coach_last_name, c.hourly_rate AS coach_hourly_rate, c.semi_private_rate AS coach_semi_private_rate,
                          cs.slot_date AS clinic_date, cs.start_time AS clinic_start_time, cs.end_time AS clinic_end_time, cs.category AS clinic_category,
                          cs.slot_date, cs.start_time, cs.end_time
                   FROM {$wpdb->prefix}scb_bookings b
@@ -153,7 +154,7 @@ class BookingController
         $id = absint($r->get_param('id'));
         $b  = $wpdb->get_row($wpdb->prepare(
             "SELECT b.*,
-                    c.first_name AS coach_first_name, c.last_name AS coach_last_name, c.email AS coach_email,
+                    c.first_name AS coach_first_name, c.last_name AS coach_last_name, c.hourly_rate AS coach_hourly_rate, c.semi_private_rate AS coach_semi_private_rate, c.email AS coach_email,
                     cs.slot_date AS clinic_date, cs.start_time AS clinic_start_time, cs.end_time AS clinic_end_time, cs.category AS clinic_category, cs.capacity AS clinic_capacity, cs.booked_count AS clinic_booked_count,
                     cs.slot_date, cs.start_time, cs.end_time
              FROM {$wpdb->prefix}scb_bookings b

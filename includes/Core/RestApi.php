@@ -378,14 +378,21 @@ class RestApi {
         global $wpdb;
 
         $coaches = $wpdb->get_results(
-            "SELECT id, first_name, last_name, slug, photo_url, bio, specialties, lesson_types
+            "SELECT id, first_name, last_name, slug, photo_url, bio, specialties, lesson_types, hourly_rate, semi_private_rate
              FROM {$wpdb->prefix}scb_coaches
              WHERE status = 'active'
              ORDER BY display_order ASC, last_name ASC",
             ARRAY_A
         );
 
-        return rest_ensure_response( [ 'success' => true, 'data' => [ 'coaches' => $coaches ?: [] ] ] );
+        return rest_ensure_response( [
+            'success' => true,
+            'data'    => [
+                'coaches'                    => $coaches ?: [],
+                'default_private_price'      => floatval( Settings::get( 'lesson_price_private', 80.00 ) ),
+                'default_semi_private_price' => floatval( Settings::get( 'lesson_price_semi_private', 40.00 ) ),
+            ]
+        ] );
     }
 
     /**

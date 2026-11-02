@@ -71,14 +71,16 @@ class SlotGenerator {
         }
 
         $table_name = $wpdb->prefix . 'scb_clinic_slots';
-        $capacity   = absint( Settings::get( 'clinic_capacity', 15 ) );
-        $price      = floatval( Settings::get( 'clinic_price', 25.00 ) );
+        $capacity     = absint( Settings::get( 'clinic_capacity_default', Settings::get( 'clinic_capacity', 15 ) ) );
+        $junior_price = floatval( Settings::get( 'clinic_price_junior', 25.00 ) );
+        $adult_price  = floatval( Settings::get( 'clinic_price_adult', 30.00 ) );
 
         $created = 0;
         $skipped = 0;
         $slots   = self::get_standard_slots();
 
         foreach ( $slots as $slot ) {
+            $slot_price = ( $slot['category'] === 'adult' ) ? $adult_price : $junior_price;
             // Check if slot already exists for this date, start_time, and category.
             $exists = $wpdb->get_var( $wpdb->prepare(
                 "SELECT id FROM {$table_name} WHERE slot_date = %s AND start_time = %s AND category = %s",
@@ -102,7 +104,7 @@ class SlotGenerator {
                     'capacity'       => $capacity,
                     'booked_count'   => 0,
                     'waitlist_count' => 0,
-                    'price'          => $price,
+                    'price'          => $slot_price,
                     'status'         => 'open',
                     'notes'          => $slot['title'],
                     'created_at'     => current_time( 'mysql' ),

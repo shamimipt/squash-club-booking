@@ -126,13 +126,31 @@ class LessonBookingHandler {
             }
 
             // Pricing.
+            $default_priv_price = floatval( Settings::get( 'lesson_price_private', Settings::get( 'private_lesson_price', 80.00 ) ) );
+            $default_semi_price = floatval( Settings::get( 'lesson_price_semi_private', Settings::get( 'semi_private_lesson_price', 40.00 ) ) );
+
+            // Check if coach has custom rates.
+            $coach_priv_rate = ( ! empty( $coach->hourly_rate ) && floatval( $coach->hourly_rate ) > 0 )
+                ? floatval( $coach->hourly_rate )
+                : null;
+            $coach_semi_rate = ( ! empty( $coach->semi_private_rate ) && floatval( $coach->semi_private_rate ) > 0 )
+                ? floatval( $coach->semi_private_rate )
+                : null;
+
             if ( $lesson_type === 'semi_private' ) {
                 $service_type = 'semi_private_lesson';
-                $price        = floatval( Settings::get( 'semi_private_lesson_price', 90.00 ) );
+                if ( $coach_semi_rate !== null ) {
+                    $price = $coach_semi_rate;
+                } elseif ( $coach_priv_rate !== null ) {
+                    $ratio = ($default_priv_price > 0) ? ($default_semi_price / $default_priv_price) : 1.38;
+                    $price = round( $coach_priv_rate * $ratio, 2 );
+                } else {
+                    $price = $default_semi_price;
+                }
                 $part_count   = ! empty( $participant_2 ) ? 2 : 1;
             } else {
                 $service_type = 'private_lesson';
-                $price        = floatval( Settings::get( 'private_lesson_price', 65.00 ) );
+                $price        = ( $coach_priv_rate !== null ) ? $coach_priv_rate : $default_priv_price;
                 $part_count   = 1;
             }
 

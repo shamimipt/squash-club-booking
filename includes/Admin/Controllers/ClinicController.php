@@ -117,9 +117,12 @@ class ClinicController {
         $date       = sanitize_text_field( $r->get_param( 'slot_date' ) ?? '' );
         $start_time = sanitize_text_field( $r->get_param( 'start_time' ) ?? '' );
         $end_time   = sanitize_text_field( $r->get_param( 'end_time' ) ?? '' );
-        $category   = sanitize_key( $r->get_param( 'category' ) ?? 'junior' );
-        $capacity   = absint( $r->get_param( 'capacity' ) ?? 15 );
-        $price      = floatval( $r->get_param( 'price' ) ?? 25.00 );
+        $category       = sanitize_key( $r->get_param( 'category' ) ?? 'junior' );
+        $capacity       = absint( $r->get_param( 'capacity' ) ?? Settings::get( 'clinic_capacity_default', 15 ) );
+        $default_price  = ( $category === 'adult' )
+            ? floatval( Settings::get( 'clinic_price_adult', 30.00 ) )
+            : floatval( Settings::get( 'clinic_price_junior', 25.00 ) );
+        $price          = ( isset( $r['price'] ) && $r['price'] !== '' ) ? floatval( $r['price'] ) : $default_price;
         $notes      = sanitize_textarea_field( $r->get_param( 'notes' ) ?? '' );
 
         if ( empty( $date ) || ! strtotime( $date ) ) {
