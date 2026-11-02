@@ -20,6 +20,26 @@
     };
 
     /**
+     * Safely construct a full REST URL handling both pretty and plain permalinks.
+     */
+    function buildRestUrl(endpoint) {
+        let base = CONFIG.restUrl || '/wp-json/scb/v1/';
+        let clean = String(endpoint || '').replace(/^\/+/, '');
+        let path = clean;
+        let query = '';
+        const qIndex = clean.indexOf('?');
+        if (qIndex !== -1) {
+            path = clean.substring(0, qIndex);
+            query = clean.substring(qIndex + 1);
+        }
+        let url = base + path;
+        if (query) {
+            url += (url.includes('?') ? '&' : '?') + query;
+        }
+        return url;
+    }
+
+    /**
      * Enforce login requirement: no guest bookings allowed.
      * Displays a clean Auth modal prompt if user is not logged in.
      */
@@ -580,7 +600,7 @@
             picker.innerHTML = '<div style="color:#64748b;">Checking availability…</div>';
 
             try {
-                const res = await fetch(`${CONFIG.restUrl}coaches/${this.selectedCoachId}/available-slots?date=${this.selectedDate}&lesson_type=${this.selectedType}`);
+                const res = await fetch(buildRestUrl(`coaches/${this.selectedCoachId}/available-slots?date=${this.selectedDate}&lesson_type=${this.selectedType}`));
                 const data = await res.json();
                 const slots = data?.data?.slots || [];
 
@@ -1090,7 +1110,7 @@
                 if (CONFIG.restNonce) {
                     headers['X-WP-Nonce'] = CONFIG.restNonce;
                 }
-                const res = await fetch(`${CONFIG.restUrl}booking/status?ref=${encodeURIComponent(ref)}`, { headers: headers });
+                const res = await fetch(buildRestUrl(`booking/status?ref=${encodeURIComponent(ref)}`), { headers: headers });
                 const result = await res.json();
 
                 if (!result.success || !result.data) {

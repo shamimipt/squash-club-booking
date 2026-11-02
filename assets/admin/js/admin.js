@@ -213,6 +213,39 @@ const SCB = (function ($) {
     // ── REST API Client ──────────────────────────────────────────────────────
     const Api = {
         /**
+         * Safely construct a full REST URL handling both pretty and plain permalinks.
+         * @param {string} endpoint
+         * @param {Object} params
+         * @returns {string}
+         */
+        buildUrl(endpoint, params = {}) {
+            let base = CONFIG.restUrl || '/wp-json/scb/v1/';
+            let clean = String(endpoint || '').replace(/^\/+/, '');
+            let path = clean;
+            let extraQuery = '';
+            const qIndex = clean.indexOf('?');
+            if (qIndex !== -1) {
+                path = clean.substring(0, qIndex);
+                extraQuery = clean.substring(qIndex + 1);
+            }
+
+            let url = base + path;
+            const queryParts = [];
+            if (extraQuery) {
+                queryParts.push(extraQuery);
+            }
+            const q = Utils.buildQuery(params);
+            if (q) {
+                queryParts.push(q);
+            }
+            if (queryParts.length > 0) {
+                const glue = url.includes('?') ? '&' : '?';
+                url += glue + queryParts.join('&');
+            }
+            return url;
+        },
+
+        /**
          * Make a REST API request.
          * @param {string} endpoint  Relative endpoint (e.g. 'bookings')
          * @param {Object} options
@@ -221,9 +254,7 @@ const SCB = (function ($) {
         request(endpoint, options = {}) {
             const { method = 'GET', data = null, params = {} } = options;
 
-            let url = CONFIG.restUrl + endpoint;
-            const query = Utils.buildQuery(params);
-            if (query) url += '?' + query;
+            const url = Api.buildUrl(endpoint, params);
 
             const fetchOpts = {
                 method,
@@ -1350,7 +1381,7 @@ const SCB = (function ($) {
                 service_type: this.state.serviceType,
                 search: this.state.search,
             });
-            const url = CONFIG.restUrl + 'reports/export?' + params + '&type=bookings&_wpnonce=' + CONFIG.restNonce;
+            const url = Api.buildUrl('reports/export?' + params + '&type=bookings&_wpnonce=' + CONFIG.restNonce);
             window.open(url, '_blank');
             Toast.info(CONFIG.strings.export_started);
         },
@@ -3429,13 +3460,13 @@ const SCB = (function ($) {
             `;
 
             document.getElementById('scb-exp-bookings').addEventListener('click', () => {
-                window.open(`${CONFIG.restUrl}reports/export?type=bookings&_wpnonce=${CONFIG.restNonce}`, '_blank');
+                window.open(Api.buildUrl(`reports/export?type=bookings&_wpnonce=${CONFIG.restNonce}`), '_blank');
             });
             document.getElementById('scb-exp-camps').addEventListener('click', () => {
-                window.open(`${CONFIG.restUrl}reports/export?type=camps&_wpnonce=${CONFIG.restNonce}`, '_blank');
+                window.open(Api.buildUrl(`reports/export?type=camps&_wpnonce=${CONFIG.restNonce}`), '_blank');
             });
             document.getElementById('scb-exp-customers').addEventListener('click', () => {
-                window.open(`${CONFIG.restUrl}reports/export?type=customers&_wpnonce=${CONFIG.restNonce}`, '_blank');
+                window.open(Api.buildUrl(`reports/export?type=customers&_wpnonce=${CONFIG.restNonce}`), '_blank');
             });
 
             await this.loadSummary();
