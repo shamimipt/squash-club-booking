@@ -1083,20 +1083,6 @@
             const el = document.getElementById('scb-booking-status');
             if (!el) return;
 
-            if (!CONFIG.isLoggedIn) {
-                el.innerHTML = `
-                    <div class="scb-status-card" style="text-align:center;max-width:460px;margin:30px auto;padding:36px 24px;">
-                        <div style="font-size:42px;margin-bottom:12px;">🔒</div>
-                        <h3 style="margin:0 0 10px;font-size:20px;font-weight:700;">Account Login Required</h3>
-                        <p style="color:#64748b;font-size:14px;line-height:1.5;margin-bottom:22px;">
-                            You must be logged in to look up booking records.
-                        </p>
-                        <a href="${CONFIG.loginUrl}" class="scb-fe-btn scb-fe-btn--primary" style="display:inline-block;padding:11px 26px;font-weight:700;text-decoration:none;">Log In / Register</a>
-                    </div>
-                `;
-                return;
-            }
-
             const urlParams = new URLSearchParams(window.location.search);
             const refFromUrl = urlParams.get('ref') || el.dataset.ref || '';
 

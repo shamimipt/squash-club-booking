@@ -292,11 +292,11 @@ class RestApi {
             'permission_callback' => 'is_user_logged_in',
         ] );
 
-        // Frontend status lookup (strictly requires authentication).
+        // Frontend status lookup (open for public reference search).
         register_rest_route( self::NAMESPACE, '/booking/status', [
             'methods'             => \WP_REST_Server::READABLE,
             'callback'            => [ $this, 'get_booking_status_by_ref' ],
-            'permission_callback' => 'is_user_logged_in',
+            'permission_callback' => '__return_true',
         ] );
 
         // Frontend customer my-bookings.
@@ -516,13 +516,6 @@ class RestApi {
     public function get_booking_status_by_ref( \WP_REST_Request $r ): \WP_REST_Response {
         global $wpdb;
 
-        if ( ! is_user_logged_in() ) {
-            return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'You must be logged in to view booking status.', 'squash-club-booking' ) ], 401 );
-        }
-
-        $user_id  = get_current_user_id();
-        $is_admin = current_user_can( 'manage_options' );
-
         $ref = sanitize_text_field( $r->get_param( 'ref' ) ?? '' );
         if ( empty( $ref ) ) {
             return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'Please provide a booking reference.', 'squash-club-booking' ) ], 400 );
@@ -541,9 +534,7 @@ class RestApi {
         ), ARRAY_A );
 
         if ( $booking ) {
-            if ( ! $is_admin && (int) ( $booking['customer_user_id'] ?? 0 ) !== $user_id ) {
-                return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'You do not have permission to view this booking.', 'squash-club-booking' ) ], 403 );
-            }
+            unset( $booking['ip_address'] );
             if ( ! empty( $booking['wc_order_id'] ) && function_exists( 'wc_get_order' ) ) {
                 $order = wc_get_order( (int) $booking['wc_order_id'] );
                 if ( $order && $order->needs_payment() ) {
@@ -563,9 +554,7 @@ class RestApi {
         ), ARRAY_A );
 
         if ( $reg ) {
-            if ( ! $is_admin && (int) ( $reg['customer_user_id'] ?? 0 ) !== $user_id ) {
-                return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'You do not have permission to view this registration.', 'squash-club-booking' ) ], 403 );
-            }
+            unset( $reg['ip_address'] );
             if ( ! empty( $reg['wc_order_id'] ) && function_exists( 'wc_get_order' ) ) {
                 $order = wc_get_order( (int) $reg['wc_order_id'] );
                 if ( $order && $order->needs_payment() ) {

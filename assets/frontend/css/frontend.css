@@ -4,32 +4,32 @@
  */
 
 :root {
-    --scb-fe-primary:          #BB0216;
-    --scb-fe-primary-hover:    #9c0212;
-    --scb-fe-navy:             #0A0A0B;
-    --scb-fe-navy-hover:       #000000;
-    --scb-fe-secondary:        #0A0A0B;
-    --scb-fe-secondary-hover:  #231F1D;
-    --scb-fe-teal:             #BB0216;
-    --scb-fe-teal-hover:       #9c0212;
-    --scb-fe-bg:               #FAF6F3;
-    --scb-fe-card-bg:          #ffffff;
-    --scb-fe-border:           #E8EAED;
-    --scb-fe-border-2:         #d0d4dc;
-    --scb-fe-text:             #202124;
-    --scb-fe-text-2:           #3c4043;
-    --scb-fe-text-muted:       #5F6368;
-    --scb-fe-success:          #166534;
-    --scb-fe-warning:          #b45309;
-    --scb-fe-error:            #BB0216;
-    --scb-fe-radius:           16px;
-    --scb-fe-radius-sm:        10px;
-    --scb-fe-radius-full:      9999px;
-    --scb-fe-shadow:           0 2px 8px rgba(10, 10, 11, 0.04), 0 1px 3px rgba(10, 10, 11, 0.02);
-    --scb-fe-shadow-hover:     0 12px 28px -4px rgba(10, 10, 11, 0.08), 0 4px 12px -2px rgba(10, 10, 11, 0.04);
-    --scb-fe-transition:       all 220ms cubic-bezier(.4, 0, .2, 1);
-    --scb-fe-font:             'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --scb-fe-font-heading:     'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --scb-fe-primary: #BB0216;
+    --scb-fe-primary-hover: #9c0212;
+    --scb-fe-navy: #0A0A0B;
+    --scb-fe-navy-hover: #000000;
+    --scb-fe-secondary: #0A0A0B;
+    --scb-fe-secondary-hover: #231F1D;
+    --scb-fe-teal: #BB0216;
+    --scb-fe-teal-hover: #9c0212;
+    --scb-fe-bg: #FAF6F3;
+    --scb-fe-card-bg: #ffffff;
+    --scb-fe-border: #E8EAED;
+    --scb-fe-border-2: #d0d4dc;
+    --scb-fe-text: #202124;
+    --scb-fe-text-2: #3c4043;
+    --scb-fe-text-muted: #5F6368;
+    --scb-fe-success: #166534;
+    --scb-fe-warning: #b45309;
+    --scb-fe-error: #BB0216;
+    --scb-fe-radius: 16px;
+    --scb-fe-radius-sm: 10px;
+    --scb-fe-radius-full: 9999px;
+    --scb-fe-shadow: 0 2px 8px rgba(10, 10, 11, 0.04), 0 1px 3px rgba(10, 10, 11, 0.02);
+    --scb-fe-shadow-hover: 0 12px 28px -4px rgba(10, 10, 11, 0.08), 0 4px 12px -2px rgba(10, 10, 11, 0.04);
+    --scb-fe-transition: all 220ms cubic-bezier(.4, 0, .2, 1);
+    --scb-fe-font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --scb-fe-font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .scb-frontend {
@@ -129,7 +129,7 @@
 
 .scb-coaches-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 24px;
     margin-bottom: 24px;
 }
@@ -682,6 +682,7 @@ button.scb-fe-btn--full {
 
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media (max-width: 992px) {
+
     .scb-grid-cards,
     .scb-coaches-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -690,6 +691,7 @@ button.scb-fe-btn--full {
 }
 
 @media (max-width: 768px) {
+
     .scb-grid-cards,
     .scb-coaches-grid {
         grid-template-columns: 1fr;
