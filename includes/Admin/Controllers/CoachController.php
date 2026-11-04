@@ -63,6 +63,15 @@ class CoachController {
 
         $items = $wpdb->get_results( empty( $params ) ? $sql : $wpdb->prepare( $sql, $params ), ARRAY_A );
 
+        if ( ! empty( $items ) ) {
+            foreach ( $items as &$co ) {
+                if ( ! empty( $co['photo_url'] ) ) {
+                    $co['photo_url'] = set_url_scheme( $co['photo_url'] );
+                }
+            }
+            unset( $co );
+        }
+
         return rest_ensure_response( [
             'success' => true,
             'data'    => [ 'items' => $items ?: [] ],

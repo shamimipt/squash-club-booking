@@ -109,6 +109,14 @@ const SCB = (function ($) {
             div.appendChild(document.createTextNode(String(str ?? '')));
             return div.innerHTML;
         },
+        safeUrl(url) {
+            if (!url) return '';
+            let str = String(url).trim();
+            if (window.location.protocol === 'https:' && str.startsWith('http://')) {
+                str = 'https://' + str.slice(7);
+            }
+            return Utils.escHtml(str);
+        },
 
         /**
          * Debounce a function.
@@ -211,6 +219,128 @@ const SCB = (function ($) {
                 html += '</tr>';
             }
             return html;
+        },
+        /**
+         * Open WordPress Media Frame to select or upload an image.
+         */
+        openMediaFrame({ title = 'Select or Upload Image', buttonText = 'Use Image', onSelect } = {}) {
+            if (typeof wp === 'undefined' || !wp.media) {
+                alert('WordPress Media Library is not available. Please ensure you are logged into WordPress admin.');
+                return;
+            }
+            const frame = wp.media({
+                title: title,
+                button: { text: buttonText },
+                multiple: false,
+                library: { type: 'image' },
+            });
+            frame.on('select', () => {
+                const attachment = frame.state().get('selection').first().toJSON();
+                if (attachment && attachment.url && typeof onSelect === 'function') {
+                    onSelect(attachment.url, attachment);
+                }
+            });
+            frame.open();
+        },
+
+        /**
+         * Setup an interactive image upload / preview / delete widget.
+         */
+        setupImageField({ inputId, previewId, placeholderId, uploadBtnId, removeBtnId, title = 'Select or Upload Image' }) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            const placeholder = document.getElementById(placeholderId);
+            const uploadBtn = document.getElementById(uploadBtnId);
+            const removeBtn = document.getElementById(removeBtnId);
+
+            const updateUI = (url) => {
+                const clean = (url || '').trim();
+                if (input && input.value !== clean) {
+                    input.value = clean;
+                }
+                if (preview) {
+                    if (clean) {
+                        preview.src = clean;
+                        preview.style.display = 'block';
+                    } else {
+                        preview.src = '';
+                        preview.style.display = 'none';
+                    }
+                }
+                if (placeholder) {
+                    placeholder.style.display = clean ? 'none' : 'block';
+                }
+                if (removeBtn) {
+                    removeBtn.style.display = clean ? 'inline-flex' : 'none';
+                }
+                if (uploadBtn) {
+                    uploadBtn.innerHTML = clean
+                        ? '<span class="dashicons dashicons-upload" style="font-size:16px;line-height:1.2;margin-right:4px;"></span> Change Image'
+                        : '<span class="dashicons dashicons-upload" style="font-size:16px;line-height:1.2;margin-right:4px;"></span> Choose / Upload Image';
+                }
+            };
+
+            uploadBtn?.addEventListener('click', (e) => {
+                e.preventDefault();
+                Utils.openMediaFrame({
+                    title: title,
+                    buttonText: 'Use This Image',
+                    onSelect: (url) => {
+                        if (input) input.value = url;
+                        updateUI(url);
+                    }
+                });
+            });
+
+            removeBtn?.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (input) input.value = '';
+                updateUI('');
+            });
+
+            input?.addEventListener('input', () => {
+                updateUI(input.value);
+            });
+        },
+
+        /**
+         * Generate HTML for an image upload field with preview and delete buttons.
+         */
+        imageFieldHtml({
+            label = 'Featured Image',
+            inputId,
+            previewId,
+            placeholderId,
+            uploadBtnId,
+            removeBtnId,
+            currentUrl = '',
+            hint = 'Upload an image via WordPress Media Library or enter a direct image URL.'
+        }) {
+            const escUrl = Utils.escHtml(Utils.safeUrl(currentUrl || ''));
+            const hasImg = Boolean(currentUrl && currentUrl.trim());
+            return `
+                <div class="scb-form-group">
+                    <label class="scb-form-label">${Utils.escHtml(label)}</label>
+                    <div style="display:flex;align-items:flex-start;gap:14px;background:var(--scb-surface-alt);border:1px solid var(--scb-border);border-radius:8px;padding:12px;">
+                        <div style="width:110px;height:75px;border-radius:6px;border:1px dashed var(--scb-border);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                            <img id="${previewId}" src="${escUrl}" alt="Preview" style="${hasImg ? 'width:100%;height:100%;object-fit:cover;' : 'display:none;width:100%;height:100%;object-fit:cover;'}">
+                            <span id="${placeholderId}" style="${hasImg ? 'display:none;' : 'font-size:11px;color:var(--scb-text-muted);text-align:center;padding:4px;'}">No image</span>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+                                <button type="button" class="scb-btn scb-btn--secondary scb-btn--sm" id="${uploadBtnId}">
+                                    <span class="dashicons dashicons-upload" style="font-size:16px;line-height:1.2;margin-right:4px;"></span> ${hasImg ? 'Change Image' : 'Choose / Upload Image'}
+                                </button>
+                                <button type="button" class="scb-btn scb-btn--danger scb-btn--sm" id="${removeBtnId}" style="${hasImg ? '' : 'display:none;'}">
+                                    <span class="dashicons dashicons-trash" style="font-size:16px;line-height:1.2;margin-right:4px;"></span> Remove Image
+                                </button>
+                            </div>
+                            <input type="text" class="scb-input scb-input--sm" id="${inputId}" value="${escUrl}" placeholder="https://... (or choose from media library above)">
+                            <div style="font-size:11px;color:var(--scb-text-muted);margin-top:4px;">${Utils.escHtml(hint)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
         },
     };
 
@@ -2002,7 +2132,7 @@ const SCB = (function ($) {
                                         <tr>
                                             <td>
                                                 <div style="display:flex;align-items:center;gap:10px;">
-                                                    <img src="${Utils.escHtml(c.photo_url || CONFIG.pluginUrl + 'assets/admin/img/avatar.png')}" alt="${Utils.escHtml(c.first_name)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--scb-border);">
+                                                    <img src="${Utils.escHtml(Utils.safeUrl(c.photo_url || CONFIG.pluginUrl + 'assets/admin/img/avatar.png'))}" alt="${Utils.escHtml(c.first_name)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--scb-border);">
                                                     <div>
                                                         <strong>${Utils.escHtml(c.first_name)} ${Utils.escHtml(c.last_name)}</strong>
                                                         <div style="font-size:11px;color:var(--scb-text-muted);">${Utils.escHtml(c.specialties || 'All levels')}</div>
@@ -2044,7 +2174,7 @@ const SCB = (function ($) {
                                 <div class="scb-card" style="display:flex;flex-direction:column;justify-content:space-between;">
                                     <div class="scb-card__body">
                                         <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
-                                            <img src="${Utils.escHtml(c.photo_url || CONFIG.pluginUrl + 'assets/admin/img/avatar.png')}" alt="${Utils.escHtml(c.first_name)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--scb-border);">
+                                            <img src="${Utils.escHtml(Utils.safeUrl(c.photo_url || CONFIG.pluginUrl + 'assets/admin/img/avatar.png'))}" alt="${Utils.escHtml(c.first_name)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--scb-border);">
                                             <div>
                                                 <h3 style="margin:0;font-size:16px;font-weight:700;">${Utils.escHtml(c.first_name)} ${Utils.escHtml(c.last_name)}</h3>
                                                 <div style="font-size:12px;color:var(--scb-text-muted);">${Utils.escHtml(c.email || '')}</div>
@@ -2108,7 +2238,7 @@ const SCB = (function ($) {
                 title: 'Generate Dummy Coaches',
                 content: `
                     <p style="margin-bottom:14px;color:var(--scb-text-muted);font-size:14px;line-height:1.6;">
-                        This will generate 3 professional demo coach profiles with photos, bios, specialties, and standard Saturday lesson schedules.
+                        This will generate 4 professional demo coach profiles with photos, bios, specialties, and standard Saturday lesson schedules.
                     </p>
                     <p style="margin-bottom:0;color:var(--scb-text-muted);font-size:13px;">
                         <em>Note: If any sample coaches already exist, they will be safely skipped to prevent duplication.</em>
@@ -2165,10 +2295,16 @@ const SCB = (function ($) {
                             <input type="text" class="scb-input" id="scb-c-phone">
                         </div>
                     </div>
-                    <div class="scb-form-group">
-                        <label class="scb-form-label">Photo URL</label>
-                        <input type="url" class="scb-input" id="scb-c-photo" placeholder="https://...">
-                    </div>
+                    ${Utils.imageFieldHtml({
+                        label: "Coach Profile Photo",
+                        inputId: "scb-c-photo",
+                        previewId: "scb-c-photo-preview",
+                        placeholderId: "scb-c-photo-none",
+                        uploadBtnId: "scb-c-photo-upload-btn",
+                        removeBtnId: "scb-c-photo-remove-btn",
+                        currentUrl: "",
+                        hint: "Upload portrait via Media Library or paste image URL."
+                    })}
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div class="scb-form-group">
                             <label class="scb-form-label">Private Rate ($/hr)</label>
@@ -2193,6 +2329,15 @@ const SCB = (function ($) {
                     <button class="scb-btn scb-btn--secondary" data-modal-close>Cancel</button>
                     <button class="scb-btn scb-btn--primary" id="scb-submit-add-coach">Create Coach</button>
                 `
+            });
+
+            Utils.setupImageField({
+                inputId: "scb-c-photo",
+                previewId: "scb-c-photo-preview",
+                placeholderId: "scb-c-photo-none",
+                uploadBtnId: "scb-c-photo-upload-btn",
+                removeBtnId: "scb-c-photo-remove-btn",
+                title: "Select Coach Photo",
             });
 
             document.getElementById('scb-submit-add-coach')?.addEventListener('click', async () => {
@@ -2277,10 +2422,16 @@ const SCB = (function ($) {
                             </div>
                         </div>
                         <div style="font-size:12px;color:var(--scb-text-muted);margin:-8px 0 12px;">Set specific custom rates, or leave blank to use club default rates (${Utils.formatCurrency(CONFIG.defaultPrivatePrice)} / ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}).</div>
-                        <div class="scb-form-group">
-                            <label class="scb-form-label">Photo URL</label>
-                            <input type="url" class="scb-input" id="scb-ec-photo" value="${Utils.escHtml(c.photo_url || '')}">
-                        </div>
+                        ${Utils.imageFieldHtml({
+                            label: "Coach Profile Photo",
+                            inputId: "scb-ec-photo",
+                            previewId: "scb-ec-photo-preview",
+                            placeholderId: "scb-ec-photo-none",
+                            uploadBtnId: "scb-ec-photo-upload-btn",
+                            removeBtnId: "scb-ec-photo-remove-btn",
+                            currentUrl: c.photo_url || "",
+                            hint: "Click Change Image to pick photo from Media Library, or Remove Image to delete it."
+                        })}
                         <div class="scb-form-group">
                             <label class="scb-form-label">Specialties</label>
                             <input type="text" class="scb-input" id="scb-ec-spec" value="${Utils.escHtml(c.specialties || '')}">
@@ -2294,6 +2445,15 @@ const SCB = (function ($) {
                         <button class="scb-btn scb-btn--secondary" data-modal-close>Cancel</button>
                         <button class="scb-btn scb-btn--primary" id="scb-submit-edit-coach">Save Changes</button>
                     `
+                });
+
+                Utils.setupImageField({
+                    inputId: "scb-ec-photo",
+                    previewId: "scb-ec-photo-preview",
+                    placeholderId: "scb-ec-photo-none",
+                    uploadBtnId: "scb-ec-photo-upload-btn",
+                    removeBtnId: "scb-ec-photo-remove-btn",
+                    title: "Update Coach Photo",
                 });
 
                 document.getElementById('scb-submit-edit-coach')?.addEventListener('click', async () => {
@@ -2880,7 +3040,7 @@ const SCB = (function ($) {
 
                         return `
                                     <div class="scb-card" style="display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">
-                                        ${c.image_url ? `<img src="${Utils.escHtml(c.image_url)}" alt="${Utils.escHtml(c.title)}" style="width:100%;height:160px;object-fit:cover;">` : ''}
+                                        ${c.image_url ? `<img src="${Utils.safeUrl(c.image_url)}" alt="${Utils.escHtml(c.title)}" style="width:100%;height:160px;object-fit:cover;" onerror="this.style.display='none';">` : ''}
                                         <div class="scb-card__body">
                                             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                                                 <h3 style="margin:0;font-size:16px;font-weight:700;">${Utils.escHtml(c.title)}</h3>
@@ -2952,7 +3112,7 @@ const SCB = (function ($) {
                 title: 'Generate Dummy Summer Camps',
                 content: `
                     <p style="margin-bottom:14px;color:var(--scb-text-muted);font-size:14px;line-height:1.6;">
-                        This will generate 3 professional demo summer camps with schedules, age brackets, pricing, descriptions, and banners.
+                        This will generate 5 professional demo summer camps with schedules, age brackets, pricing, descriptions, and banners.
                     </p>
                     <p style="margin-bottom:0;color:var(--scb-text-muted);font-size:13px;">
                         <em>Note: If any sample camps already exist, they will be safely skipped to avoid duplicates.</em>
@@ -3023,10 +3183,16 @@ const SCB = (function ($) {
                             <input type="number" class="scb-input" id="scb-camp-cap" value="20">
                         </div>
                     </div>
-                    <div class="scb-form-group">
-                        <label class="scb-form-label">Image URL</label>
-                        <input type="url" class="scb-input" id="scb-camp-img" placeholder="https://...">
-                    </div>
+                    ${Utils.imageFieldHtml({
+                        label: "Camp Featured Image",
+                        inputId: "scb-camp-img",
+                        previewId: "scb-camp-img-preview",
+                        placeholderId: "scb-camp-img-none",
+                        uploadBtnId: "scb-camp-upload-btn",
+                        removeBtnId: "scb-camp-remove-btn",
+                        currentUrl: "",
+                        hint: "Upload an image via WordPress Media Library or enter a direct image URL."
+                    })}
                     <div class="scb-form-group">
                         <label class="scb-form-label">Description</label>
                         <textarea class="scb-textarea" id="scb-camp-desc" rows="3"></textarea>
@@ -3036,6 +3202,15 @@ const SCB = (function ($) {
                     <button class="scb-btn scb-btn--secondary" data-modal-close>Cancel</button>
                     <button class="scb-btn scb-btn--primary" id="scb-submit-camp-btn">Publish Camp</button>
                 `
+            });
+
+            Utils.setupImageField({
+                inputId: "scb-camp-img",
+                previewId: "scb-camp-img-preview",
+                placeholderId: "scb-camp-img-none",
+                uploadBtnId: "scb-camp-upload-btn",
+                removeBtnId: "scb-camp-remove-btn",
+                title: "Select Camp Featured Image",
             });
 
             document.getElementById('scb-submit-camp-btn')?.addEventListener('click', async () => {
@@ -3089,8 +3264,28 @@ const SCB = (function ($) {
                     title: `Edit Camp — ${Utils.escHtml(c.title)}`,
                     content: `
                         <div class="scb-form-group">
-                            <label class="scb-form-label">Title</label>
+                            <label class="scb-form-label">Camp Title *</label>
                             <input type="text" class="scb-input" id="scb-ecamp-title" value="${Utils.escHtml(c.title)}">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">Start Date</label>
+                                <input type="date" class="scb-input" id="scb-ecamp-start" value="${c.start_date || ''}">
+                            </div>
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">End Date</label>
+                                <input type="date" class="scb-input" id="scb-ecamp-end" value="${c.end_date || ''}">
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">Min Age</label>
+                                <input type="number" class="scb-input" id="scb-ecamp-min-age" value="${c.min_age || 6}">
+                            </div>
+                            <div class="scb-form-group">
+                                <label class="scb-form-label">Max Age</label>
+                                <input type="number" class="scb-input" id="scb-ecamp-max-age" value="${c.max_age || 18}">
+                            </div>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                             <div class="scb-form-group">
@@ -3109,6 +3304,7 @@ const SCB = (function ($) {
                                     <option value="open" ${c.registration_status === 'open' ? 'selected' : ''}>Open</option>
                                     <option value="closed" ${c.registration_status === 'closed' ? 'selected' : ''}>Closed</option>
                                     <option value="full" ${c.registration_status === 'full' ? 'selected' : ''}>Full</option>
+                                    <option value="cancelled" ${c.registration_status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
                                 </select>
                             </div>
                             <div class="scb-form-group">
@@ -3120,6 +3316,16 @@ const SCB = (function ($) {
                                 </select>
                             </div>
                         </div>
+                        ${Utils.imageFieldHtml({
+                            label: "Camp Featured Image",
+                            inputId: "scb-ecamp-img",
+                            previewId: "scb-ecamp-img-preview",
+                            placeholderId: "scb-ecamp-img-none",
+                            uploadBtnId: "scb-ecamp-upload-btn",
+                            removeBtnId: "scb-ecamp-remove-btn",
+                            currentUrl: c.image_url || "",
+                            hint: "Click Change Image to choose or upload from WordPress Media Library, or click Remove Image to delete it."
+                        })}
                         <div class="scb-form-group">
                             <label class="scb-form-label">Description</label>
                             <textarea class="scb-textarea" id="scb-ecamp-desc" rows="3">${Utils.escHtml(c.description || '')}</textarea>
@@ -3131,36 +3337,51 @@ const SCB = (function ($) {
                     `
                 });
 
-                document.getElementById('scb-submit-ecamp')?.addEventListener('click', async () => {
-                    const submitBtn = document.getElementById('scb-submit-ecamp');
+                Utils.setupImageField({
+                    inputId: "scb-ecamp-img",
+                    previewId: "scb-ecamp-img-preview",
+                    placeholderId: "scb-ecamp-img-none",
+                    uploadBtnId: "scb-ecamp-upload-btn",
+                    removeBtnId: "scb-ecamp-remove-btn",
+                    title: "Update Camp Image",
+                });
+
+                document.getElementById("scb-submit-ecamp")?.addEventListener("click", async () => {
+                    const submitBtn = document.getElementById("scb-submit-ecamp");
                     if (submitBtn) {
                         submitBtn.disabled = true;
-                        submitBtn.textContent = 'Saving…';
+                        submitBtn.textContent = "Saving…";
                     }
 
                     try {
+                        const imgVal = document.getElementById("scb-ecamp-img")?.value.trim() ?? "";
                         const res = await Api.post(`camps/${id}`, {
-                            title: document.getElementById('scb-ecamp-title')?.value,
-                            price: document.getElementById('scb-ecamp-price')?.value,
-                            capacity: document.getElementById('scb-ecamp-cap')?.value,
-                            registration_status: document.getElementById('scb-ecamp-reg-status')?.value,
-                            publication_status: document.getElementById('scb-ecamp-pub-status')?.value,
-                            description: document.getElementById('scb-ecamp-desc')?.value,
+                            title: document.getElementById("scb-ecamp-title")?.value,
+                            start_date: document.getElementById("scb-ecamp-start")?.value,
+                            end_date: document.getElementById("scb-ecamp-end")?.value,
+                            min_age: document.getElementById("scb-ecamp-min-age")?.value,
+                            max_age: document.getElementById("scb-ecamp-max-age")?.value,
+                            price: document.getElementById("scb-ecamp-price")?.value,
+                            capacity: document.getElementById("scb-ecamp-cap")?.value,
+                            registration_status: document.getElementById("scb-ecamp-reg-status")?.value,
+                            publication_status: document.getElementById("scb-ecamp-pub-status")?.value,
+                            image_url: imgVal,
+                            description: document.getElementById("scb-ecamp-desc")?.value,
                         });
                         Modal.close();
-                        Toast.success(res?.message || 'Camp updated successfully.');
+                        Toast.success(res?.message || "Camp updated successfully.");
                         this.loadCamps();
                     } catch (err) {
                         if (submitBtn) {
                             submitBtn.disabled = false;
-                            submitBtn.textContent = 'Save Changes';
+                            submitBtn.textContent = "Save Changes";
                         }
-                        Toast.error('Could not update camp', err.message);
+                        Toast.error("Could not update camp", err.message);
                     }
                 });
 
             } catch (err) {
-                Toast.error('Could not load camp details', err.message);
+                Toast.error("Could not load camp details", err.message);
             }
         }
     };

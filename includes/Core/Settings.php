@@ -114,7 +114,7 @@ class Settings {
                 'tag'              => 'scb_sunday_clinic',
                 'shortcode'        => '[scb_sunday_clinic]',
                 'title'            => __( 'Sunday Squash Clinic Booking', 'squash-club-booking' ),
-                'description'      => __( 'Interactive Sunday Clinic schedule, Junior and Adult session selector, booking form, and automatic waitlist when sessions are full.', 'squash-club-booking' ),
+                'description'      => __( 'Interactive Sunday Clinic schedule, Junior and Adult session selector, booking form, and automatic waitlist. Supports category filtering attribute: [scb_sunday_clinic category="junior"] or [scb_sunday_clinic category="adult"].', 'squash-club-booking' ),
                 'recommended_page' => 'Sunday Squash Clinics',
                 'recommended_slug' => 'sunday-clinics',
                 'category'         => 'Clinics',

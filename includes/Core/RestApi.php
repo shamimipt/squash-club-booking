@@ -358,15 +358,29 @@ class RestApi {
     public function get_public_clinic_slots( \WP_REST_Request $r ): \WP_REST_Response {
         global $wpdb;
 
-        $today = current_time( 'Y-m-d' );
-        $slots = $wpdb->get_results( $wpdb->prepare(
-            "SELECT id, slot_date, start_time, end_time, category, capacity, booked_count, waitlist_count, price, status, notes
-             FROM {$wpdb->prefix}scb_clinic_slots
-             WHERE slot_date >= %s AND status IN ('open','full')
-             ORDER BY slot_date ASC, start_time ASC
-             LIMIT 40",
-            $today
-        ), ARRAY_A );
+        $today    = current_time( 'Y-m-d' );
+        $category = sanitize_key( $r->get_param( 'category' ) ?? '' );
+
+        if ( ! empty( $category ) ) {
+            $slots = $wpdb->get_results( $wpdb->prepare(
+                "SELECT id, slot_date, start_time, end_time, category, capacity, booked_count, waitlist_count, price, status, notes
+                 FROM {$wpdb->prefix}scb_clinic_slots
+                 WHERE slot_date >= %s AND status IN ('open','full') AND category = %s
+                 ORDER BY slot_date ASC, start_time ASC
+                 LIMIT 40",
+                $today,
+                $category
+            ), ARRAY_A );
+        } else {
+            $slots = $wpdb->get_results( $wpdb->prepare(
+                "SELECT id, slot_date, start_time, end_time, category, capacity, booked_count, waitlist_count, price, status, notes
+                 FROM {$wpdb->prefix}scb_clinic_slots
+                 WHERE slot_date >= %s AND status IN ('open','full')
+                 ORDER BY slot_date ASC, start_time ASC
+                 LIMIT 40",
+                $today
+            ), ARRAY_A );
+        }
 
         return rest_ensure_response( [ 'success' => true, 'data' => [ 'slots' => $slots ?: [] ] ] );
     }
@@ -642,85 +656,85 @@ class RestApi {
 
     /** @return bool|\WP_Error */
     public function require_admin_access( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_access_dashboard' )
+        return ( current_user_can( 'scb_access_dashboard' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_view_bookings( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_view_bookings' )
+        return ( current_user_can( 'scb_view_bookings' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_bookings( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_bookings' )
+        return ( current_user_can( 'scb_manage_bookings' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_approve_bookings( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_approve_bookings' )
+        return ( current_user_can( 'scb_approve_bookings' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_view_clinics( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_view_clinic_slots' )
+        return ( current_user_can( 'scb_view_clinic_slots' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_clinics( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_clinics' )
+        return ( current_user_can( 'scb_manage_clinics' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_view_coaches( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_coaches' )
+        return ( current_user_can( 'scb_manage_coaches' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_coaches( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_coaches' )
+        return ( current_user_can( 'scb_manage_coaches' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_schedules( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_schedules' )
+        return ( current_user_can( 'scb_manage_schedules' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_camps( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_camps' )
+        return ( current_user_can( 'scb_manage_camps' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_waitlist( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_waitlist' )
+        return ( current_user_can( 'scb_manage_waitlist' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_view_reports( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_view_reports' )
+        return ( current_user_can( 'scb_view_reports' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_export_data( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_export_data' )
+        return ( current_user_can( 'scb_export_data' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }
 
     public function require_manage_settings( \WP_REST_Request $r ) {
-        return current_user_can( 'scb_manage_settings' )
+        return ( current_user_can( 'scb_manage_settings' ) || current_user_can( 'manage_options' ) )
             ? true
             : new \WP_Error( 'scb_forbidden', __( 'Access denied.', 'squash-club-booking' ), [ 'status' => 403 ] );
     }

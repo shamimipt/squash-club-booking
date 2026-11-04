@@ -11,6 +11,7 @@
         restUrl: (typeof scbFrontend !== 'undefined' && scbFrontend.restUrl) ? scbFrontend.restUrl : '/wp-json/scb/v1/',
         nonce: (typeof scbFrontend !== 'undefined' && scbFrontend.nonce) ? scbFrontend.nonce : '',
         restNonce: (typeof scbFrontend !== 'undefined' && scbFrontend.restNonce) ? scbFrontend.restNonce : '',
+        pluginUrl: (typeof scbFrontend !== 'undefined' && scbFrontend.pluginUrl) ? scbFrontend.pluginUrl : '/wp-content/plugins/squash-club-booking/',
         isLoggedIn: (typeof scbFrontend !== 'undefined' && scbFrontend.isLoggedIn) ? Boolean(scbFrontend.isLoggedIn) : false,
         currentUser: (typeof scbFrontend !== 'undefined' && scbFrontend.currentUser) ? scbFrontend.currentUser : null,
         loginUrl: (typeof scbFrontend !== 'undefined' && scbFrontend.loginUrl) ? scbFrontend.loginUrl : '/my-account/',
@@ -111,6 +112,14 @@
             const div = document.createElement('div');
             div.appendChild(document.createTextNode(String(str ?? '')));
             return div.innerHTML;
+        },
+        safeUrl(url) {
+            if (!url) return '';
+            let str = String(url).trim();
+            if (window.location.protocol === 'https:' && str.startsWith('http://')) {
+                str = 'https://' + str.slice(7);
+            }
+            return Utils.escHtml(str);
         }
     };
 
@@ -168,17 +177,29 @@
             const el = document.getElementById('scb-clinic-booking');
             if (!el) return;
 
+            const categoryFilter = (el.dataset.category || '').toLowerCase().trim();
+            this.category = categoryFilter;
+
             el.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">Loading available clinic sessions…</div>';
 
             try {
-                const res = await fetch(CONFIG.restUrl + 'clinic-slots/public');
+                const url = categoryFilter
+                    ? `${CONFIG.restUrl}clinic-slots/public?category=${encodeURIComponent(categoryFilter)}`
+                    : `${CONFIG.restUrl}clinic-slots/public`;
+                const res = await fetch(url);
                 const data = await res.json();
-                this.slots = data?.data?.slots || [];
+                let slots = data?.data?.slots || [];
+
+                if (categoryFilter) {
+                    slots = slots.filter(s => (s.category || '').toLowerCase() === categoryFilter);
+                }
+                this.slots = slots;
 
                 if (!this.slots.length) {
+                    const catLabel = categoryFilter === 'junior' ? 'Junior ' : (categoryFilter === 'adult' ? 'Adult ' : '');
                     el.innerHTML = `
                         <div class="scb-status-card">
-                            <h3 style="margin-top:0;">No Upcoming Clinic Slots Available</h3>
+                            <h3 style="margin-top:0;">No Upcoming ${catLabel}Clinic Slots Available</h3>
                             <p style="color:#64748b;">New Sunday clinic sessions are generated every week. Please check back soon or contact club administration.</p>
                         </div>
                     `;
@@ -481,7 +502,7 @@
                         ${this.coaches.map(c => `
                             <div class="scb-coach-card ${c.id === this.selectedCoachId ? 'is-selected' : ''}" data-id="${c.id}">
                                 ${c.photo_url 
-                                    ? `<img src="${Utils.escHtml(c.photo_url)}" alt="${Utils.escHtml(c.first_name)}" class="scb-coach-card__avatar">`
+                                    ? `<img src="${Utils.safeUrl(c.photo_url)}" alt="${Utils.escHtml(c.first_name)}" class="scb-coach-card__avatar">`
                                     : `<div class="scb-coach-card__avatar-placeholder">${Utils.escHtml((c.first_name?.[0] || 'C') + (c.last_name?.[0] || ''))}</div>`
                                 }
                                 <div class="scb-coach-card__content">
@@ -777,7 +798,7 @@
                 <div class="scb-grid-cards">
                     ${this.camps.map(c => `
                         <div class="scb-fe-card" style="padding:0;overflow:hidden;">
-                            ${c.image_url ? `<img src="${Utils.escHtml(c.image_url)}" alt="${Utils.escHtml(c.title)}" style="width:100%;height:180px;object-fit:cover;">` : ''}
+                            ${c.image_url ? `<img src="${Utils.safeUrl(c.image_url)}" alt="${Utils.escHtml(c.title)}" style="width:100%;height:180px;object-fit:cover;" onerror="this.onerror=null; this.src='${Utils.safeUrl(CONFIG.pluginUrl)}assets/frontend/images/camps/camp-1.jpg';">` : ''}
                             <div style="padding:22px;display:flex;flex-direction:column;flex:1;justify-content:space-between;">
                                 <div>
                                     <div class="scb-fe-card__badge-bar">

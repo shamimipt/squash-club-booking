@@ -53,6 +53,7 @@ class Assets {
         );
 
         // WordPress built-in: dashicons, wp-color-picker.
+        wp_enqueue_media();
         wp_enqueue_style( 'wp-color-picker' );
 
         // Admin JS (defer non-critical).
@@ -73,7 +74,7 @@ class Assets {
                 'restUrl'       => rest_url( 'scb/v1/' ),
                 'nonce'         => wp_create_nonce( 'scb_admin_nonce' ),
                 'restNonce'     => wp_create_nonce( 'wp_rest' ),
-                'pluginUrl'     => SCB_PLUGIN_URL,
+                'pluginUrl'     => set_url_scheme( SCB_PLUGIN_URL ),
                 'dateFormat'    => \SquashClubBooking\Core\Settings::get( 'date_format', 'Y-m-d' ),
                 'timeFormat'    => \SquashClubBooking\Core\Settings::get( 'time_format', 'g:i A' ),
                 'defaultPrivatePrice'     => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_private', 80.00 ) ),
@@ -139,6 +140,7 @@ class Assets {
                 'restUrl'     => rest_url( 'scb/v1/' ),
                 'nonce'       => wp_create_nonce( 'scb_frontend_nonce' ),
                 'restNonce'   => wp_create_nonce( 'wp_rest' ),
+                'pluginUrl'     => set_url_scheme( SCB_PLUGIN_URL ),
                 'isLoggedIn'  => $is_logged_in,
                 'loginUrl'    => add_query_arg( 'redirect_to', urlencode( $current_url ), $my_account_url ),
                 'registerUrl' => add_query_arg( 'redirect_to', urlencode( $current_url ), $my_account_url ),

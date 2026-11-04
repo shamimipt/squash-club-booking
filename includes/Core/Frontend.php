@@ -74,11 +74,17 @@ class Frontend
      * @param array $atts
      * @return string
      */
-    public function shortcode_clinic(array $atts): string
+    public function shortcode_clinic($atts = []): string
     {
         if (! \SquashClubBooking\Core\Settings::get('clinic_enabled', true)) {
             return '<p>' . esc_html__('Clinic booking is currently unavailable.', 'squash-club-booking') . '</p>';
         }
+
+        $atts = shortcode_atts([
+            'category' => '', // 'junior', 'adult', or empty for all
+        ], (array) $atts, 'scb_sunday_clinic');
+
+        $category = sanitize_key(strtolower(trim($atts['category'] ?? '')));
 
         ob_start();
         include SCB_PLUGIN_DIR . 'templates/frontend/clinic-booking.php';

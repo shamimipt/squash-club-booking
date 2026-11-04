@@ -97,7 +97,12 @@ class CampRegistrationHandler {
                 return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'Registration is closed for this camp.', 'squash-club-booking' ) ], 400 );
             }
 
-            if ( (int) $camp->registered_count >= (int) $camp->capacity || $camp->registration_status === 'full' ) {
+            $current_active = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}scb_camp_registrations WHERE camp_id = %d AND registration_status != 'cancelled'",
+                $camp_id
+            ) );
+
+            if ( $current_active >= (int) $camp->capacity || $camp->registration_status === 'full' ) {
                 $wpdb->query( 'ROLLBACK' );
                 return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'This camp has reached maximum capacity.', 'squash-club-booking' ) ], 400 );
             }
@@ -175,14 +180,19 @@ class CampRegistrationHandler {
 
             $reg_id = $wpdb->insert_id;
 
-            // Atomic update of camp registered count and status.
-            $wpdb->query( $wpdb->prepare(
-                "UPDATE {$wpdb->prefix}scb_camps
-                 SET registered_count = registered_count + 1,
-                     registration_status = IF(registered_count + 1 >= capacity, 'full', registration_status)
-                 WHERE id = %d",
-                $camp_id
-            ) );
+            // Synchronize camp registered count and status from real registrations.
+            $new_count  = $current_active + 1;
+            $new_status = ( $new_count >= (int) $camp->capacity ) ? 'full' : $camp->registration_status;
+            $wpdb->update(
+                $wpdb->prefix . 'scb_camps',
+                [
+                    'registered_count'    => $new_count,
+                    'registration_status' => $new_status,
+                ],
+                [ 'id' => $camp_id ],
+                [ '%d', '%s' ],
+                [ '%d' ]
+            );
 
             $wpdb->query( 'COMMIT' );
 

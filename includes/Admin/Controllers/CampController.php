@@ -62,6 +62,29 @@ class CampController {
 
         $items = $wpdb->get_results( empty( $params ) ? $sql : $wpdb->prepare( $sql, $params ), ARRAY_A );
 
+        if ( ! empty( $items ) ) {
+            foreach ( $items as &$it ) {
+                if ( ! empty( $it['image_url'] ) ) {
+                    $it['image_url'] = set_url_scheme( $it['image_url'] );
+                }
+                // Dynamically sync registered_count with actual active registrations from scb_camp_registrations
+                $real_count   = isset( $it['active_registrations_count'] ) ? (int) $it['active_registrations_count'] : 0;
+                $stored_count = isset( $it['registered_count'] ) ? (int) $it['registered_count'] : 0;
+
+                if ( $stored_count !== $real_count ) {
+                    $wpdb->update(
+                        $wpdb->prefix . 'scb_camps',
+                        [ 'registered_count' => $real_count ],
+                        [ 'id' => $it['id'] ],
+                        [ '%d' ],
+                        [ '%d' ]
+                    );
+                }
+                $it['registered_count'] = $real_count;
+            }
+            unset( $it );
+        }
+
         return rest_ensure_response( [
             'success' => true,
             'data'    => [ 'items' => $items ?: [] ],
@@ -110,6 +133,22 @@ class CampController {
 
         if ( ! $c ) {
             return new \WP_REST_Response( [ 'success' => false, 'message' => __( 'Camp not found.', 'squash-club-booking' ) ], 404 );
+        }
+
+        $active_count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}scb_camp_registrations WHERE camp_id = %d AND registration_status != 'cancelled'",
+            $id
+        ) );
+        if ( is_array( $c ) ) {
+            $c['registered_count'] = $active_count;
+        } elseif ( is_object( $c ) ) {
+            $c->registered_count = $active_count;
+        }
+
+        if ( is_array( $c ) && ! empty( $c['image_url'] ) ) {
+            $c['image_url'] = set_url_scheme( $c['image_url'] );
+        } elseif ( is_object( $c ) && ! empty( $c->image_url ) ) {
+            $c->image_url = set_url_scheme( $c->image_url );
         }
 
         return rest_ensure_response( [ 'success' => true, 'data' => $c ] );
@@ -215,9 +254,10 @@ class CampController {
             $fields['description'] = wp_kses_post( $params['description'] );
             $formats[] = '%s';
         }
-        if ( isset( $params['image_url'] ) ) {
-            $fields['image_url'] = esc_url_raw( $params['image_url'] );
-            $formats[] = '%s';
+        if ( array_key_exists( 'image_url', $params ) ) {
+            $raw_img             = is_string( $params['image_url'] ) ? trim( $params['image_url'] ) : '';
+            $fields['image_url'] = ! empty( $raw_img ) ? esc_url_raw( $raw_img ) : null;
+            $formats[]           = '%s';
         }
         if ( isset( $params['location'] ) ) {
             $fields['location'] = sanitize_text_field( $params['location'] );
