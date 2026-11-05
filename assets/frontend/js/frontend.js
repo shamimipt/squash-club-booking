@@ -26,7 +26,7 @@
      * Safely construct a full REST URL handling both pretty and plain permalinks.
      */
     function buildRestUrl(endpoint) {
-        let base = CONFIG.restUrl || '/wp-json/scb/v1/';
+        let base = (typeof Utils !== 'undefined' && Utils.safeUrl) ? Utils.safeUrl(CONFIG.restUrl || '/wp-json/scb/v1/') : (CONFIG.restUrl || '/wp-json/scb/v1/');
         let clean = String(endpoint || '').replace(/^\/+/, '');
         let path = clean;
         let query = '';
@@ -1033,7 +1033,13 @@
                 if (CONFIG.restNonce) {
                     headers['X-WP-Nonce'] = CONFIG.restNonce;
                 }
-                const res = await fetch(CONFIG.restUrl + 'my-bookings', { headers: headers });
+                const res = await fetch(buildRestUrl('my-bookings'), {
+                    headers: headers,
+                    credentials: 'same-origin'
+                });
+                if (!res.ok) {
+                    throw new Error('Server returned HTTP ' + res.status);
+                }
                 const data = await res.json();
                 const bookings = data?.data?.bookings || [];
                 const camps = data?.data?.camps || [];
@@ -1041,8 +1047,9 @@
                 if (!bookings.length && !camps.length) {
                     el.innerHTML = `
                         <div class="scb-status-card">
-                            <h3>No Active Bookings Found</h3>
-                            <p style="color:#64748b;">You don't have any recorded bookings or camp registrations yet.</p>
+                            <div style="font-size:36px;margin-bottom:12px;">📅</div>
+                            <h3 style="margin:0 0 8px;font-size:18px;font-weight:700;">No Active Bookings Found</h3>
+                            <p style="color:#64748b;margin:0;font-size:14px;line-height:1.5;">You don't have any recorded clinic bookings, private lessons, or summer camp registrations yet.</p>
                         </div>
                     `;
                     return;
@@ -1201,13 +1208,19 @@
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
-    // Auto-boot on DOM ready.
-    document.addEventListener('DOMContentLoaded', () => {
+    // Auto-boot on DOM ready or immediately if already loaded.
+    function scbBoot() {
         ClinicBooking.init();
         LessonBooking.init();
         CampRegistration.init();
         MyBookings.init();
         BookingStatus.init();
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', scbBoot);
+    } else {
+        scbBoot();
+    }
 
 })(jQuery);

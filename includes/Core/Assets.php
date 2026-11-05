@@ -92,8 +92,35 @@ class Assets {
     public function enqueue_frontend(): void {
         global $post;
 
+        $should_enqueue = false;
+
         // Check if current page contains an SCB shortcode.
-        if ( ! is_a( $post, 'WP_Post' ) || ! $this->page_has_scb_shortcode( $post->post_content ) ) {
+        if ( is_a( $post, 'WP_Post' ) && $this->page_has_scb_shortcode( $post->post_content ) ) {
+            $should_enqueue = true;
+        }
+
+        // Check if on WooCommerce My Account page by post ID.
+        $my_account_id = function_exists( 'wc_get_page_id' ) ? (int) wc_get_page_id( 'myaccount' ) : 0;
+        if ( $my_account_id && is_a( $post, 'WP_Post' ) && (int) $post->ID === $my_account_id ) {
+            $should_enqueue = true;
+        }
+
+        // Enqueue on WooCommerce My Account pages via conditionals.
+        if ( function_exists( 'is_account_page' ) && is_account_page() ) {
+            $should_enqueue = true;
+        }
+
+        // Enqueue on WooCommerce custom my-bookings endpoint URL.
+        if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'my-bookings' ) ) {
+            $should_enqueue = true;
+        }
+
+        // Check query vars for my-bookings rewrite endpoint.
+        if ( isset( $GLOBALS['wp']->query_vars['my-bookings'] ) || isset( $_GET['my-bookings'] ) ) {
+            $should_enqueue = true;
+        }
+
+        if ( ! $should_enqueue ) {
             return;
         }
 
@@ -137,7 +164,7 @@ class Assets {
             'scbFrontend',
             [
                 'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-                'restUrl'     => rest_url( 'scb/v1/' ),
+                'restUrl'     => set_url_scheme( rest_url( 'scb/v1/' ) ),
                 'nonce'       => wp_create_nonce( 'scb_frontend_nonce' ),
                 'restNonce'   => wp_create_nonce( 'wp_rest' ),
                 'pluginUrl'     => set_url_scheme( SCB_PLUGIN_URL ),

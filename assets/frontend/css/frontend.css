@@ -873,3 +873,26 @@ button.scb-fe-btn--full {
     color: #166534;
     border: 1px solid #bbf7d0;
 }
+/* ── Loading Placeholder ────────────────────────────────────────────── */
+.scb-fe-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 36px 16px;
+    color: #64748b;
+    font-size: 14px;
+}
+.scb-fe-loading::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top-color: #0284c7;
+    border-radius: 50%;
+    animation: scb-spin 0.8s linear infinite;
+    display: inline-block;
+}
+@keyframes scb-spin {
+    to { transform: rotate(360deg); }
+}
