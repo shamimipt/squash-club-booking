@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use SquashClubBooking\Core\AuditLog;
+use SquashClubBooking\Core\Settings;
 use SquashClubBooking\Modules\Clinics\SlotGenerator;
 
 /**
@@ -79,7 +80,7 @@ class ClinicController {
                  SELECT COUNT(*) FROM {$wpdb->prefix}scb_bookings b
                  WHERE b.clinic_slot_id = cs.id
                    AND b.booking_status NOT IN ('cancelled', 'rejected', 'waitlisted')
-                   AND b.payment_status = 'paid'
+                   AND (b.payment_status = 'paid' OR b.amount = 0)
              )"
         );
 

@@ -58,6 +58,8 @@ class Seeder {
                 'bio'          => 'Former PSA World Top 35 professional with over 14 years of international tournament experience. Marcus specializes in modern deceptive racket technique, high-paced length rallying, and tactical game plans for tournament contenders.',
                 'specialties'  => 'Deceptive Drops, Volley Kills, Match Strategy, High-Paced Rallies',
                 'lesson_types' => 'private,semi_private',
+                'hourly_rate'  => 95.00,
+                'semi_private_rate' => 55.00,
                 'status'       => 'active',
                 'display_order'=> 1,
             ],
@@ -71,6 +73,8 @@ class Seeder {
                 'bio'          => 'Certified Level 3 Elite Coach and former European national champion. Elena is renowned for her biomechanical approach to swing fundamentals, explosive footwork development, and junior elite training.',
                 'specialties'  => 'Biomechanical Swing, Explosive Movement, Junior Development, Forehand Technique',
                 'lesson_types' => 'private,semi_private',
+                'hourly_rate'  => 90.00,
+                'semi_private_rate' => 50.00,
                 'status'       => 'active',
                 'display_order'=> 2,
             ],
@@ -84,6 +88,8 @@ class Seeder {
                 'bio'          => 'Egyptian style squash specialist focusing on wrist deception, devastating boast variations, and tight dying lengths. Tariq has developed multiple junior national team players.',
                 'specialties'  => 'Egyptian Attack, Trick Boasts, Nick Hunting, Front Court Agility',
                 'lesson_types' => 'private,semi_private',
+                'hourly_rate'  => 85.00,
+                'semi_private_rate' => 45.00,
                 'status'       => 'active',
                 'display_order'=> 3,
             ],
@@ -97,6 +103,8 @@ class Seeder {
                 'bio'          => 'Former British Junior Open champion and certified high-performance fitness conditioning specialist. Chloe focuses on dynamic court coverage, endurance rallies, wrist control, and mental resilience under pressure.',
                 'specialties'  => 'Agility & Footwork, Cross-Court Volleys, Mental Toughness, Match Conditioning',
                 'lesson_types' => 'private,semi_private',
+                'hourly_rate'  => 80.00,
+                'semi_private_rate' => 40.00,
                 'status'       => 'active',
                 'display_order'=> 4,
             ],
@@ -122,8 +130,7 @@ class Seeder {
             $c['created_at'] = current_time( 'mysql' );
             $wpdb->insert(
                 $wpdb->prefix . 'scb_coaches',
-                $c,
-                [ '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s' ]
+                $c
             );
             $coach_id = $wpdb->insert_id;
 

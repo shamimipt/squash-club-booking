@@ -501,7 +501,7 @@ class PaymentModule {
             "SELECT COUNT(*) FROM {$wpdb->prefix}scb_bookings
              WHERE clinic_slot_id = %d
                AND booking_status NOT IN ('cancelled', 'rejected', 'waitlisted')
-               AND payment_status = 'paid'",
+               AND (payment_status = 'paid' OR amount = 0)",
             $slot_id
         ) );
 

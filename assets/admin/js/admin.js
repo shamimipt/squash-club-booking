@@ -1006,6 +1006,10 @@ const SCB = (function ($) {
                         <p class="scb-page-subtitle">View and manage all booking records.</p>
                     </div>
                     <div class="scb-page-actions">
+                        <button class="scb-btn scb-btn--primary" id="scb-add-booking-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Manual Booking
+                        </button>
                         <button class="scb-btn scb-btn--secondary" id="scb-bookings-export">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Export CSV
@@ -1114,6 +1118,11 @@ const SCB = (function ($) {
             service.addEventListener('change', () => { this.state.serviceType = service.value; reload(); });
             status.addEventListener('change', () => { this.state.bookingStatus = status.value; reload(); });
             payment.addEventListener('change', () => { this.state.paymentStatus = payment.value; reload(); });
+
+            document.getElementById('scb-add-booking-btn')?.addEventListener('click', () => {
+                const defaultSvc = (this.state.serviceType === 'lessons' || this.state.serviceType === 'private_lesson' || this.state.serviceType === 'semi_private_lesson') ? 'private_lesson' : 'clinic';
+                this.openManualBookingModal(defaultSvc);
+            });
 
             document.getElementById('scb-bookings-export').addEventListener('click', () => this.exportCsv());
         },
@@ -1570,6 +1579,391 @@ const SCB = (function ($) {
             window.open(url, '_blank');
             Toast.info(CONFIG.strings.export_started);
         },
+
+        async openManualBookingModal(defaultService = 'clinic', defaultSlotOrCoachId = null, onSavedCallback = null) {
+            Modal.open({
+                title: 'Add Client / Manual Booking (Pre-Arranged)',
+                body: '<div class="scb-loading-overlay"><div class="scb-spinner"></div></div>',
+                size: 'lg',
+            });
+
+            try {
+                const [slotsRes, coachesRes] = await Promise.all([
+                    Api.get('clinic-slots', { orderby: 'slot_date', order: 'ASC' }).catch(() => ({ data: { items: [] } })),
+                    Api.get('coaches').catch(() => ({ data: { items: [] } })),
+                ]);
+
+                const slots = slotsRes.data?.items || [];
+                const coaches = (coachesRes.data?.items || []).filter(c => c.status === 'active' || !c.status);
+
+                const today = new Date().toISOString().split('T')[0];
+                const currentSvc = defaultService || 'clinic';
+
+                Modal.body.innerHTML = `
+                    <form id="scb-manual-booking-form" onsubmit="return false;">
+                        <div class="scb-form-group" style="margin-bottom:16px;">
+                            <label class="scb-label" style="font-weight:600;margin-bottom:8px;">Select Service Type *</label>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                                <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--scb-border);border-radius:6px;cursor:pointer;background:var(--scb-surface-2);">
+                                    <input type="radio" name="manual_service_type" value="clinic" ${currentSvc === 'clinic' ? 'checked' : ''}>
+                                    <strong>Sunday Clinic</strong>
+                                </label>
+                                <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--scb-border);border-radius:6px;cursor:pointer;background:var(--scb-surface-2);">
+                                    <input type="radio" name="manual_service_type" value="private_lesson" ${currentSvc === 'private_lesson' ? 'checked' : ''}>
+                                    <strong>Private Lesson (1-on-1)</strong>
+                                </label>
+                                <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--scb-border);border-radius:6px;cursor:pointer;background:var(--scb-surface-2);">
+                                    <input type="radio" name="manual_service_type" value="semi_private_lesson" ${currentSvc === 'semi_private_lesson' ? 'checked' : ''}>
+                                    <strong>Semi-Private Lesson (2-on-1)</strong>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Clinic Slot Selection -->
+                        <div id="scb-manual-clinic-section" style="${currentSvc === 'clinic' ? '' : 'display:none;'}">
+                            <div class="scb-form-group">
+                                <label class="scb-label">Sunday Clinic Session *</label>
+                                <select class="scb-select" id="scb-manual-clinic-slot">
+                                    <option value="">-- Choose an upcoming Sunday Clinic session --</option>
+                                    ${slots.map(s => {
+                                        const booked = parseInt(s.booked_count, 10) || 0;
+                                        const cap = parseInt(s.capacity, 10) || 15;
+                                        const isSel = (currentSvc === 'clinic' && defaultSlotOrCoachId && defaultSlotOrCoachId == s.id);
+                                        const fullLabel = (booked >= cap) ? ' [FULL]' : ` (${booked}/${cap} booked)`;
+                                        return `<option value="${s.id}" data-price="${s.price}" ${isSel ? 'selected' : ''}>
+                                            ${Utils.formatDate(s.slot_date)} | ${s.start_time.substring(0,5)} - ${s.end_time.substring(0,5)} | ${Utils.escHtml((s.category || '').toUpperCase())}${fullLabel} — $${parseFloat(s.price).toFixed(2)}
+                                        </option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Lesson Coach and Schedule Selection -->
+                        <div id="scb-manual-lesson-section" style="${currentSvc !== 'clinic' ? '' : 'display:none;'}">
+                            <div class="scb-form-group">
+                                <label class="scb-label">Select Coach *</label>
+                                <select class="scb-select" id="scb-manual-coach">
+                                    <option value="">-- Select Coach --</option>
+                                    ${coaches.map(c => {
+                                        const defaultPriv = parseFloat(CONFIG.defaultPrivatePrice) || 80;
+                                        const defaultSemi = parseFloat(CONFIG.defaultSemiPrivatePrice) || 40;
+                                        const privRate = (c.hourly_rate && parseFloat(c.hourly_rate) > 0)
+                                            ? parseFloat(c.hourly_rate)
+                                            : defaultPriv;
+                                        const semiRate = (c.semi_private_rate && parseFloat(c.semi_private_rate) > 0)
+                                            ? parseFloat(c.semi_private_rate)
+                                            : defaultSemi;
+                                        const isSel = (currentSvc !== 'clinic' && defaultSlotOrCoachId && defaultSlotOrCoachId == c.id);
+                                        return `<option value="${c.id}" data-priv-rate="${privRate}" data-semi-rate="${semiRate}" ${isSel ? 'selected' : ''}>
+                                            Coach: ${Utils.escHtml(c.first_name + ' ' + (c.last_name || ''))} (Rate: $${privRate}/hr private, $${semiRate}/hr semi)
+                                        </option>`;
+                                    }).join('')}
+                                </select>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Lesson Date *</label>
+                                    <input type="date" class="scb-input" id="scb-manual-lesson-date" value="${today}">
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Start Time *</label>
+                                    <input type="time" class="scb-input" id="scb-manual-lesson-time" value="10:00">
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Duration *</label>
+                                    <select class="scb-select" id="scb-manual-duration">
+                                        <option value="45">45 Minutes</option>
+                                        <option value="60" selected>60 Minutes (1 Hour)</option>
+                                        <option value="90">90 Minutes (1.5 Hours)</option>
+                                        <option value="120">120 Minutes (2 Hours)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="scb-form-group" id="scb-group-participant-2" style="${currentSvc === 'semi_private_lesson' ? '' : 'display:none;'}">
+                                <label class="scb-label">Second Participant Name (Semi-Private) *</label>
+                                <input type="text" class="scb-input" id="scb-manual-part2" placeholder="Full name of second player">
+                            </div>
+                        </div>
+
+                        <!-- Client / Participant Details -->
+                        <div style="border-top:1px solid var(--scb-border);padding-top:14px;margin-top:14px;">
+                            <h4 style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--scb-text-muted);">Client & Participant Information</h4>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Client Full Name *</label>
+                                    <input type="text" class="scb-input" id="scb-manual-name" required placeholder="e.g. John Doe">
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Client Email *</label>
+                                    <input type="email" class="scb-input" id="scb-manual-email" required placeholder="client@example.com">
+                                    <span class="scb-form-hint" style="font-size:11px;color:var(--scb-text-muted);">Auto-links to client's WordPress user account if found.</span>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Phone Number</label>
+                                    <input type="tel" class="scb-input" id="scb-manual-phone" placeholder="e.g. (555) 123-4567">
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Skill Level</label>
+                                    <select class="scb-select" id="scb-manual-skill">
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                        <option value="elite">Elite / Competitive</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="scb-form-group" style="margin-top:8px;">
+                                <label class="scb-label">Participant Name <span style="font-weight:normal;color:var(--scb-text-muted);">(Optional - if booking on behalf of family member/junior)</span></label>
+                                <input type="text" class="scb-input" id="scb-manual-part1" placeholder="Leave blank if participant is the client above">
+                            </div>
+                        </div>
+
+                        <!-- Pricing, Status & Admin Notes -->
+                        <div style="border-top:1px solid var(--scb-border);padding-top:14px;margin-top:14px;">
+                            <h4 style="margin:0 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--scb-text-muted);">Pricing & Pre-Arrangement Settings</h4>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Agreed Amount ($)</label>
+                                    <input type="number" step="0.01" class="scb-input" id="scb-manual-amount" value="0.00">
+                                    <span class="scb-form-hint" style="font-size:11px;color:var(--scb-text-muted);">Editable for complimentary ($0) or custom negotiated rates.</span>
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Payment Status</label>
+                                    <select class="scb-select" id="scb-manual-payment-status">
+                                        <option value="paid" selected>Paid (Pre-Arranged / Cash / Offline)</option>
+                                        <option value="unpaid">Unpaid / Pay Later</option>
+                                        <option value="pending">Pending Payment</option>
+                                    </select>
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Booking Status</label>
+                                    <select class="scb-select" id="scb-manual-booking-status">
+                                        <option value="approved" selected>Approved / Confirmed</option>
+                                        <option value="pending">Pending Approval</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Internal Staff / Admin Notes</label>
+                                    <textarea class="scb-input" id="scb-manual-admin-notes" rows="2" placeholder="e.g. Pre-arranged booking; payment received at desk..."></textarea>
+                                </div>
+                                <div class="scb-form-group">
+                                    <label class="scb-label">Client Notes / Special Requests</label>
+                                    <textarea class="scb-input" id="scb-manual-notes" rows="2" placeholder="Special requirements, court notes, etc."></textarea>
+                                </div>
+                            </div>
+                            <div style="margin-top:12px;">
+                                <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;">
+                                    <input type="checkbox" id="scb-manual-send-email" checked>
+                                    Send automated confirmation email to client
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                `;
+
+                Modal.footer.innerHTML = `
+                    <button class="scb-btn scb-btn--secondary" data-modal-close>Cancel</button>
+                    <button class="scb-btn scb-btn--primary" id="scb-manual-submit-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M5 13l4 4L19 7"/></svg>
+                        Confirm & Create Booking
+                    </button>
+                `;
+
+                // Handle service type switching
+                const updateServiceUi = (svc) => {
+                    const clinicSec = document.getElementById('scb-manual-clinic-section');
+                    const lessonSec = document.getElementById('scb-manual-lesson-section');
+                    const part2Group = document.getElementById('scb-group-participant-2');
+                    const amountInput = document.getElementById('scb-manual-amount');
+
+                    if (svc === 'clinic') {
+                        if (clinicSec) clinicSec.style.display = '';
+                        if (lessonSec) lessonSec.style.display = 'none';
+                        if (part2Group) part2Group.style.display = 'none';
+
+                        const slotSel = document.getElementById('scb-manual-clinic-slot');
+                        const opt = slotSel?.options[slotSel.selectedIndex];
+                        if (opt && opt.dataset.price && amountInput) {
+                            amountInput.value = parseFloat(opt.dataset.price).toFixed(2);
+                        }
+                    } else {
+                        if (clinicSec) clinicSec.style.display = 'none';
+                        if (lessonSec) lessonSec.style.display = '';
+                        if (part2Group) part2Group.style.display = (svc === 'semi_private_lesson') ? '' : 'none';
+
+                        const defaultPriv = parseFloat(CONFIG.defaultPrivatePrice) || 80;
+                        const defaultSemi = parseFloat(CONFIG.defaultSemiPrivatePrice) || 40;
+                        const defaultRate = (svc === 'semi_private_lesson') ? defaultSemi : defaultPriv;
+
+                        const coachSel = document.getElementById('scb-manual-coach');
+                        const opt = coachSel?.options[coachSel.selectedIndex];
+                        if (amountInput) {
+                            if (opt && opt.value) {
+                                const rate = (svc === 'semi_private_lesson') ? opt.dataset.semiRate : opt.dataset.privRate;
+                                if (rate) amountInput.value = parseFloat(rate).toFixed(2);
+                            } else if (parseFloat(amountInput.value || 0) === 0 || amountInput.value === '') {
+                                amountInput.value = defaultRate.toFixed(2);
+                            }
+                        }
+                    }
+                };
+
+                // Listen to service type radio change
+                Modal.body.querySelectorAll('input[name="manual_service_type"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        updateServiceUi(e.target.value);
+                    });
+                });
+
+                // Auto-fill price on clinic slot change
+                document.getElementById('scb-manual-clinic-slot')?.addEventListener('change', (e) => {
+                    const opt = e.target.options[e.target.selectedIndex];
+                    const amountInput = document.getElementById('scb-manual-amount');
+                    if (opt && opt.dataset.price && amountInput) {
+                        amountInput.value = parseFloat(opt.dataset.price).toFixed(2);
+                    }
+                });
+
+                // Auto-fill price on coach change
+                document.getElementById('scb-manual-coach')?.addEventListener('change', (e) => {
+                    const opt = e.target.options[e.target.selectedIndex];
+                    const svc = Modal.body.querySelector('input[name="manual_service_type"]:checked')?.value || 'private_lesson';
+                    const amountInput = document.getElementById('scb-manual-amount');
+                    if (amountInput) {
+                        const defaultPriv = parseFloat(CONFIG.defaultPrivatePrice) || 80;
+                        const defaultSemi = parseFloat(CONFIG.defaultSemiPrivatePrice) || 40;
+                        if (opt && opt.value) {
+                            const rate = (svc === 'semi_private_lesson') ? opt.dataset.semiRate : opt.dataset.privRate;
+                            if (rate) amountInput.value = parseFloat(rate).toFixed(2);
+                        } else {
+                            amountInput.value = (svc === 'semi_private_lesson' ? defaultSemi : defaultPriv).toFixed(2);
+                        }
+                    }
+                });
+
+                // Trigger initial price fill
+                updateServiceUi(currentSvc);
+
+                // Handle submit
+                document.getElementById('scb-manual-submit-btn')?.addEventListener('click', async () => {
+                    const svc = Modal.body.querySelector('input[name="manual_service_type"]:checked')?.value || 'clinic';
+                    const name = document.getElementById('scb-manual-name')?.value.trim();
+                    const email = document.getElementById('scb-manual-email')?.value.trim();
+                    const phone = document.getElementById('scb-manual-phone')?.value.trim();
+                    const skill = document.getElementById('scb-manual-skill')?.value;
+                    const part1 = document.getElementById('scb-manual-part1')?.value.trim();
+                    const amount = parseFloat(document.getElementById('scb-manual-amount')?.value || 0);
+                    const paymentStatus = document.getElementById('scb-manual-payment-status')?.value || 'paid';
+                    const bookingStatus = document.getElementById('scb-manual-booking-status')?.value || 'approved';
+                    const adminNotes = document.getElementById('scb-manual-admin-notes')?.value.trim();
+                    const notes = document.getElementById('scb-manual-notes')?.value.trim();
+                    const sendNotification = document.getElementById('scb-manual-send-email')?.checked;
+
+                    if (!name) {
+                        Toast.error('Validation Error', 'Please enter the client full name.');
+                        document.getElementById('scb-manual-name')?.focus();
+                        return;
+                    }
+                    if (!email || !email.includes('@')) {
+                        Toast.error('Validation Error', 'Please enter a valid client email address.');
+                        document.getElementById('scb-manual-email')?.focus();
+                        return;
+                    }
+
+                    const payload = {
+                        service_type: svc,
+                        customer_name: name,
+                        customer_email: email,
+                        customer_phone: phone,
+                        skill_level: skill,
+                        participant_name: part1 || name,
+                        amount: amount,
+                        payment_status: paymentStatus,
+                        booking_status: bookingStatus,
+                        admin_notes: adminNotes,
+                        notes: notes,
+                        send_notification: sendNotification,
+                    };
+
+                    if (svc === 'clinic') {
+                        const slotId = document.getElementById('scb-manual-clinic-slot')?.value;
+                        if (!slotId) {
+                            Toast.error('Validation Error', 'Please select a Sunday Clinic session.');
+                            document.getElementById('scb-manual-clinic-slot')?.focus();
+                            return;
+                        }
+                        payload.clinic_slot_id = parseInt(slotId, 10);
+                    } else {
+                        const coachId = document.getElementById('scb-manual-coach')?.value;
+                        const lessonDate = document.getElementById('scb-manual-lesson-date')?.value;
+                        const lessonTime = document.getElementById('scb-manual-lesson-time')?.value;
+                        const duration = document.getElementById('scb-manual-duration')?.value;
+
+                        if (!coachId) {
+                            Toast.error('Validation Error', 'Please select a coach.');
+                            document.getElementById('scb-manual-coach')?.focus();
+                            return;
+                        }
+                        if (!lessonDate) {
+                            Toast.error('Validation Error', 'Please choose a lesson date.');
+                            document.getElementById('scb-manual-lesson-date')?.focus();
+                            return;
+                        }
+                        if (!lessonTime) {
+                            Toast.error('Validation Error', 'Please choose a lesson start time.');
+                            document.getElementById('scb-manual-lesson-time')?.focus();
+                            return;
+                        }
+
+                        payload.coach_id = parseInt(coachId, 10);
+                        payload.lesson_date = lessonDate;
+                        payload.lesson_start_time = lessonTime;
+                        payload.duration_minutes = parseInt(duration, 10) || 60;
+
+                        if (svc === 'semi_private_lesson') {
+                            const part2 = document.getElementById('scb-manual-part2')?.value.trim();
+                            if (!part2) {
+                                Toast.error('Validation Error', 'Please enter the second participant name for a semi-private lesson.');
+                                document.getElementById('scb-manual-part2')?.focus();
+                                return;
+                            }
+                            payload.participant_2 = part2;
+                        }
+                    }
+
+                    const submitBtn = document.getElementById('scb-manual-submit-btn');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="scb-spinner scb-spinner--sm"></span> Creating Booking…';
+                    }
+
+                    try {
+                        const res = await Api.post('bookings', payload);
+                        Modal.close();
+                        Toast.success(res?.message || 'Manual booking successfully created.');
+
+                        if (typeof onSavedCallback === 'function') {
+                            onSavedCallback();
+                        } else {
+                            this.loadBookings();
+                        }
+                    } catch (err) {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M5 13l4 4L19 7"/></svg> Confirm & Create Booking';
+                        }
+                        Toast.error('Booking Creation Failed', err.message);
+                    }
+                });
+
+            } catch (err) {
+                Modal.body.innerHTML = `<div class="scb-alert scb-alert--error">Could not initialize booking form: ${Utils.escHtml(err.message)}</div>`;
+            }
+        },
     };
 
     // ── Sunday Clinics View ──────────────────────────────────────────────────
@@ -1587,11 +1981,15 @@ const SCB = (function ($) {
                         <p class="scb-page-subtitle">Manage weekly Sunday clinic time slots, capacity, and slot generation.</p>
                     </div>
                     <div class="scb-page-actions">
+                        <button class="scb-btn scb-btn--primary" id="scb-clinics-book-client-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                            Book Client to Clinic
+                        </button>
                         <button class="scb-btn scb-btn--secondary" id="scb-clinics-generate-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                             Generate Weekly Slots
                         </button>
-                        <button class="scb-btn scb-btn--primary" id="scb-clinics-add-btn">
+                        <button class="scb-btn scb-btn--secondary" id="scb-clinics-add-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Add Clinic Slot
                         </button>
@@ -1629,6 +2027,9 @@ const SCB = (function ($) {
                 </div>
             `;
 
+            document.getElementById('scb-clinics-book-client-btn')?.addEventListener('click', () => {
+                BookingsView.openManualBookingModal('clinic', null, () => this.loadSlots());
+            });
             document.getElementById('scb-clinics-generate-btn').addEventListener('click', () => this.openGenerateModal());
             document.getElementById('scb-clinics-add-btn').addEventListener('click', () => this.openAddModal());
             document.getElementById('scb-clinics-category').addEventListener('change', (e) => { this.state.category = e.target.value; this.loadSlots(); });
@@ -1702,6 +2103,7 @@ const SCB = (function ($) {
                             <td>${Utils.statusBadge(s.status, 'clinic')}</td>
                             <td>
                                 <div style="display:flex;gap:4px;">
+                                    <button class="scb-btn scb-btn--sm scb-btn--primary scb-book-slot-btn" data-id="${s.id}" data-date="${s.slot_date}">Book Client</button>
                                     <button class="scb-btn scb-btn--sm scb-btn--secondary scb-edit-slot-btn" data-id="${s.id}" data-cap="${cap}" data-price="${s.price}" data-status="${s.status}" data-notes="${Utils.escHtml(s.notes || '')}">Edit</button>
                                     <button class="scb-btn scb-btn--sm scb-btn--danger scb-delete-slot-btn" data-id="${s.id}" data-date="${s.slot_date}">Delete</button>
                                 </div>
@@ -1711,6 +2113,12 @@ const SCB = (function ($) {
                 }).join('');
 
                 // Bind action buttons.
+                tbody.querySelectorAll('.scb-book-slot-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        BookingsView.openManualBookingModal('clinic', parseInt(btn.dataset.id, 10), () => this.loadSlots());
+                    });
+                });
+
                 tbody.querySelectorAll('.scb-edit-slot-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         this.openEditModal(btn.dataset.id, btn.dataset.cap, btn.dataset.price, btn.dataset.status, btn.dataset.notes);
@@ -1957,6 +2365,13 @@ const SCB = (function ($) {
             if (title) title.textContent = 'Private & Semi-Private Lessons';
             const sub = container.querySelector('.scb-page-subtitle');
             if (sub) sub.textContent = 'Manage one-on-one and semi-private lessons booked with coaches.';
+            const addBtn = container.querySelector('#scb-add-booking-btn');
+            if (addBtn) {
+                addBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Book Lesson for Client
+                `;
+            }
             const svcSelect = container.querySelector('#scb-bookings-service');
             if (svcSelect) {
                 svcSelect.innerHTML = `

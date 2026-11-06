@@ -42,6 +42,11 @@ class RestApi {
                 'permission_callback' => [ $this, 'require_view_bookings' ],
                 'args'                => $this->bookings_list_args(),
             ],
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => [ '\SquashClubBooking\Admin\Controllers\BookingController', 'create' ],
+                'permission_callback' => [ $this, 'require_manage_bookings' ],
+            ],
         ] );
 
         register_rest_route( self::NAMESPACE, '/bookings/(?P<id>\d+)', [

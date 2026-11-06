@@ -142,6 +142,311 @@ class BookingController
     }
 
     /**
+     * Create a manual booking (admin adds pre-arranged / offline client).
+     *
+     * @param \WP_REST_Request $r
+     * @return \WP_REST_Response
+     */
+    public static function create(\WP_REST_Request $r): \WP_REST_Response
+    {
+        global $wpdb;
+
+        $params = $r->get_json_params() ?: [];
+
+        $service_type = sanitize_key($params['service_type'] ?? 'clinic');
+        if (! in_array($service_type, ['clinic', 'private_lesson', 'semi_private_lesson'], true)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => __('Invalid service type specified.', 'squash-club-booking'),
+            ], 400);
+        }
+
+        $customer_name  = sanitize_text_field($params['customer_name'] ?? '');
+        $customer_email = sanitize_email($params['customer_email'] ?? '');
+        $customer_phone = sanitize_text_field($params['customer_phone'] ?? '');
+
+        if (empty($customer_name)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => __('Customer name is required.', 'squash-club-booking'),
+            ], 400);
+        }
+
+        if (empty($customer_email) || ! is_email($customer_email)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => __('A valid customer email is required.', 'squash-club-booking'),
+            ], 400);
+        }
+
+        // Link existing WP user if available
+        $customer_user_id = ! empty($params['customer_user_id']) ? absint($params['customer_user_id']) : null;
+        if (! $customer_user_id) {
+            $user = get_user_by('email', $customer_email);
+            if ($user) {
+                $customer_user_id = $user->ID;
+            }
+        }
+
+        $booking_status = sanitize_key($params['booking_status'] ?? 'approved');
+        if (! in_array($booking_status, ['pending', 'approved', 'waitlisted', 'completed'], true)) {
+            $booking_status = 'approved';
+        }
+
+        $payment_status = sanitize_key($params['payment_status'] ?? 'paid');
+        if (! in_array($payment_status, ['paid', 'unpaid', 'pending', 'refunded'], true)) {
+            $payment_status = 'paid';
+        }
+
+        $amount            = isset($params['amount']) ? floatval($params['amount']) : 0.00;
+        $notes             = sanitize_textarea_field($params['notes'] ?? '');
+        $admin_notes       = sanitize_textarea_field($params['admin_notes'] ?? '');
+        $participant_name  = sanitize_text_field($params['participant_name'] ?? $customer_name);
+        $skill_level       = sanitize_text_field($params['skill_level'] ?? 'beginner');
+        $send_notification = ! empty($params['send_notification']);
+
+        $ip_address = AuditLog::get_client_ip();
+        $wpdb->query('START TRANSACTION');
+
+        try {
+            if ($service_type === 'clinic') {
+                $slot_id = absint($params['clinic_slot_id'] ?? 0);
+                if (! $slot_id) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Please select a clinic slot.', 'squash-club-booking'),
+                    ], 400);
+                }
+
+                $slot = $wpdb->get_row($wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}scb_clinic_slots WHERE id = %d FOR UPDATE",
+                    $slot_id
+                ));
+
+                if (! $slot) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Selected clinic slot does not exist.', 'squash-club-booking'),
+                    ], 404);
+                }
+
+                // Reference: SCB-CLN-YYYYMMDD-XXXX
+                $date_tag    = date('Ymd', strtotime($slot->slot_date));
+                $rand_tag    = strtoupper(wp_generate_password(4, false));
+                $booking_ref = "SCB-CLN-{$date_tag}-{$rand_tag}";
+
+                $wpdb->insert(
+                    $wpdb->prefix . 'scb_bookings',
+                    [
+                        'booking_ref'       => $booking_ref,
+                        'service_type'      => 'clinic',
+                        'customer_user_id'  => $customer_user_id,
+                        'customer_name'     => $customer_name,
+                        'customer_email'    => $customer_email,
+                        'customer_phone'    => $customer_phone,
+                        'clinic_slot_id'    => $slot_id,
+                        'participant_count' => 1,
+                        'booking_status'    => $booking_status,
+                        'payment_status'    => $payment_status,
+                        'amount'            => $amount,
+                        'notes'             => $notes,
+                        'admin_notes'       => $admin_notes,
+                        'ip_address'        => $ip_address,
+                        'created_at'        => current_time('mysql'),
+                        'updated_at'        => current_time('mysql'),
+                    ],
+                    ['%s', '%s', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s', '%s']
+                );
+
+                $booking_id = $wpdb->insert_id;
+
+                $wpdb->insert(
+                    $wpdb->prefix . 'scb_booking_participants',
+                    [
+                        'booking_id'  => $booking_id,
+                        'first_name'  => $participant_name,
+                        'last_name'   => '',
+                        'skill_level' => $skill_level,
+                        'notes'       => $notes,
+                        'created_at'  => current_time('mysql'),
+                    ],
+                    ['%d', '%s', '%s', '%s', '%s', '%s']
+                );
+
+                $wpdb->query('COMMIT');
+
+                // Recalculate slot capacity
+                \SquashClubBooking\Modules\Payments\PaymentModule::sync_clinic_slot_count((int) $slot_id);
+
+                $new_booking = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id));
+
+                if ($send_notification) {
+                    $time_display  = date('g:i A', strtotime($slot->start_time)) . ' - ' . date('g:i A', strtotime($slot->end_time));
+                    $extra_details = '<div class="info-row"><span class="info-label">' . __('Date & Time', 'squash-club-booking') . '</span><span class="info-val">' . date('l, M j, Y', strtotime($slot->slot_date)) . ', ' . $time_display . '</span></div>';
+                    $extra_details .= '<div class="info-row"><span class="info-label">' . __('Clinic Type', 'squash-club-booking') . '</span><span class="info-val">' . ucfirst($slot->category) . ' Clinic</span></div>';
+                    $extra_details .= '<div class="info-row"><span class="info-label">' . __('Booking Type', 'squash-club-booking') . '</span><span class="info-val">' . __('Manual / Pre-Arranged Entry', 'squash-club-booking') . '</span></div>';
+
+                    NotificationModule::send_booking_confirmation($new_booking, $extra_details);
+                }
+
+                AuditLog::log('manual_booking_created', 'booking', $booking_id, [], (array) $new_booking);
+
+                return rest_ensure_response([
+                    'success' => true,
+                    'message' => __('Client successfully added to Sunday Clinic.', 'squash-club-booking'),
+                    'data'    => $new_booking,
+                ]);
+
+            } else {
+                // Private or Semi-Private Lesson
+                $coach_id = absint($params['coach_id'] ?? 0);
+                if (! $coach_id) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Please select a coach for this lesson.', 'squash-club-booking'),
+                    ], 400);
+                }
+
+                $coach = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}scb_coaches WHERE id = %d", $coach_id));
+                if (! $coach) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Selected coach was not found.', 'squash-club-booking'),
+                    ], 404);
+                }
+
+                $lesson_date = sanitize_text_field($params['lesson_date'] ?? '');
+                $start_time  = sanitize_text_field($params['lesson_start_time'] ?? '');
+                $duration    = max(15, absint($params['duration_minutes'] ?? 60));
+
+                if (empty($lesson_date)) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Lesson date is required.', 'squash-club-booking'),
+                    ], 400);
+                }
+
+                if (empty($start_time)) {
+                    $wpdb->query('ROLLBACK');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => __('Lesson start time is required.', 'squash-club-booking'),
+                    ], 400);
+                }
+
+                if (strlen($start_time) === 5) {
+                    $start_time .= ':00';
+                }
+
+                $end_time = date('H:i:s', strtotime($start_time) + ($duration * 60));
+
+                $participant_2 = sanitize_text_field($params['participant_2'] ?? '');
+                $part_count    = ($service_type === 'semi_private_lesson' && ! empty($participant_2)) ? 2 : 1;
+
+                // Reference: SCB-LES-YYYYMMDD-XXXX
+                $date_tag    = date('Ymd', strtotime($lesson_date));
+                $rand_tag    = strtoupper(wp_generate_password(4, false));
+                $booking_ref = "SCB-LES-{$date_tag}-{$rand_tag}";
+
+                $wpdb->insert(
+                    $wpdb->prefix . 'scb_bookings',
+                    [
+                        'booking_ref'       => $booking_ref,
+                        'service_type'      => $service_type,
+                        'customer_user_id'  => $customer_user_id,
+                        'customer_name'     => $customer_name,
+                        'customer_email'    => $customer_email,
+                        'customer_phone'    => $customer_phone,
+                        'coach_id'          => $coach_id,
+                        'lesson_date'       => $lesson_date,
+                        'lesson_start_time' => $start_time,
+                        'lesson_end_time'   => $end_time,
+                        'participant_count' => $part_count,
+                        'booking_status'    => $booking_status,
+                        'payment_status'    => $payment_status,
+                        'amount'            => $amount,
+                        'notes'             => $notes,
+                        'admin_notes'       => $admin_notes,
+                        'ip_address'        => $ip_address,
+                        'created_at'        => current_time('mysql'),
+                        'updated_at'        => current_time('mysql'),
+                    ],
+                    ['%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%s', '%s']
+                );
+
+                $booking_id = $wpdb->insert_id;
+
+                // Participant 1
+                $wpdb->insert(
+                    $wpdb->prefix . 'scb_booking_participants',
+                    [
+                        'booking_id'  => $booking_id,
+                        'first_name'  => $participant_name,
+                        'last_name'   => '',
+                        'skill_level' => $skill_level,
+                        'notes'       => $notes,
+                        'created_at'  => current_time('mysql'),
+                    ],
+                    ['%d', '%s', '%s', '%s', '%s', '%s']
+                );
+
+                // Participant 2 if semi-private
+                if ($service_type === 'semi_private_lesson' && ! empty($participant_2)) {
+                    $wpdb->insert(
+                        $wpdb->prefix . 'scb_booking_participants',
+                        [
+                            'booking_id'  => $booking_id,
+                            'first_name'  => $participant_2,
+                            'last_name'   => '',
+                            'skill_level' => $skill_level,
+                            'notes'       => '',
+                            'created_at'  => current_time('mysql'),
+                        ],
+                        ['%d', '%s', '%s', '%s', '%s', '%s']
+                    );
+                }
+
+                $wpdb->query('COMMIT');
+
+                $new_booking = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id));
+
+                if ($send_notification) {
+                    $coach_name    = trim($coach->first_name . ' ' . ($coach->last_name ?? ''));
+                    $time_display  = date('g:i A', strtotime($start_time)) . ' - ' . date('g:i A', strtotime($end_time));
+                    $service_label = ($service_type === 'semi_private_lesson') ? __('Semi-Private Lesson (2-on-1)', 'squash-club-booking') : __('Private Lesson (1-on-1)', 'squash-club-booking');
+
+                    $extra_details = '<div class="info-row"><span class="info-label">' . __('Coach', 'squash-club-booking') . '</span><span class="info-val">' . esc_html($coach_name) . '</span></div>';
+                    $extra_details .= '<div class="info-row"><span class="info-label">' . __('Date & Time', 'squash-club-booking') . '</span><span class="info-val">' . date('l, M j, Y', strtotime($lesson_date)) . ', ' . $time_display . '</span></div>';
+                    $extra_details .= '<div class="info-row"><span class="info-label">' . __('Lesson Type', 'squash-club-booking') . '</span><span class="info-val">' . esc_html($service_label) . '</span></div>';
+                    $extra_details .= '<div class="info-row"><span class="info-label">' . __('Booking Type', 'squash-club-booking') . '</span><span class="info-val">' . __('Manual / Pre-Arranged Entry', 'squash-club-booking') . '</span></div>';
+
+                    NotificationModule::send_booking_confirmation($new_booking, $extra_details);
+                }
+
+                AuditLog::log('manual_booking_created', 'booking', $booking_id, [], (array) $new_booking);
+
+                return rest_ensure_response([
+                    'success' => true,
+                    'message' => __('Lesson booking successfully created for client.', 'squash-club-booking'),
+                    'data'    => $new_booking,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            $wpdb->query('ROLLBACK');
+            error_log('SCB Manual Booking Error: ' . $e->getMessage());
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => __('Database error while creating booking: ', 'squash-club-booking') . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Show booking details including participants and payment.
      *
      * @param \WP_REST_Request $r
