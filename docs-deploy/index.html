@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Squash Club Booking – Plugin Documentation</title>
+  <meta name="description" content="Complete client documentation for the Squash Club Booking & Management System WordPress plugin." />
+  <style>
+    /* ── Reset & Base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:       #0d6e3a;
+      --brand-light: #12954e;
+      --brand-bg:    #e9f7f0;
+      --accent:      #f59e0b;
+      --accent-bg:   #fef9eb;
+      --danger:      #dc2626;
+      --danger-bg:   #fef2f2;
+      --info:        #0369a1;
+      --info-bg:     #e0f2fe;
+      --text:        #1a1a1a;
+      --muted:       #6b7280;
+      --border:      #e5e7eb;
+      --radius:      10px;
+      --sidebar-w:   280px;
+      --header-h:    64px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      color: var(--text);
+      background: #f9fafb;
+      line-height: 1.65;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, kbd {
+      font-family: 'Cascadia Code', 'Fira Mono', 'Consolas', monospace;
+      font-size: 0.88em;
+    }
+    code {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 4px;
+      padding: 1px 6px;
+      color: #15803d;
+    }
+    pre {
+      background: #1e2a1e;
+      color: #d4f7d4;
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      overflow-x: auto;
+      font-size: 0.87em;
+      line-height: 1.6;
+      margin: 16px 0;
+    }
+    pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+    /* ── Top Header ────────────────────────────────────────────────────── */
+    .top-header {
+      position: sticky; top: 0; z-index: 100;
+      height: var(--header-h);
+      background: var(--brand);
+      display: flex; align-items: center;
+      padding: 0 32px;
+      gap: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.18);
+    }
+    .top-header .logo-mark {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,.18);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .top-header h1 { color: #fff; font-size: 1.1rem; font-weight: 700; flex: 1; }
+    .top-header .badge {
+      background: var(--accent); color: #7c3c00;
+      padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+    }
+    .top-header .github-link {
+      color: rgba(255,255,255,.8); font-size: 0.82rem;
+      border: 1px solid rgba(255,255,255,.3); padding: 4px 12px; border-radius: 6px;
+    }
+    .top-header .github-link:hover { background: rgba(255,255,255,.12); text-decoration: none; }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .layout { display: flex; min-height: calc(100vh - var(--header-h)); }
+
+    /* ── Sidebar ───────────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid var(--border);
+      position: sticky; top: var(--header-h);
+      height: calc(100vh - var(--header-h));
+      overflow-y: auto;
+      padding: 24px 0 40px;
+    }
+    .sidebar-section { margin-bottom: 6px; }
+    .sidebar-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: 10px 20px 4px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 7px 20px 7px 28px;
+      color: #374151;
+      font-size: 0.88rem;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    .sidebar a:hover, .sidebar a.active {
+      background: var(--brand-bg);
+      color: var(--brand);
+      border-left-color: var(--brand);
+      text-decoration: none;
+    }
+    .sidebar a.top-link {
+      padding-left: 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* ── Main Content ──────────────────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      max-width: 900px;
+      padding: 40px 48px 80px;
+      min-width: 0;
+    }
+
+    /* ── Sections ──────────────────────────────────────────────────────── */
+    section { margin-bottom: 60px; scroll-margin-top: calc(var(--header-h) + 20px); }
+    section + section { border-top: 1px solid var(--border); padding-top: 60px; }
+    h2 {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: var(--brand);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    h2 .icon { font-size: 1.3rem; }
+    h3 {
+      font-size: 1.08rem; font-weight: 700;
+      margin: 28px 0 10px; color: #111;
+    }
+    h4 { font-size: 0.95rem; font-weight: 700; margin: 18px 0 8px; color: #333; }
+    p { margin-bottom: 12px; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    li { margin-bottom: 5px; }
+
+    /* ── Hero / Intro Card ─────────────────────────────────────────────── */
+    .hero-card {
+      background: linear-gradient(135deg, var(--brand) 0%, #1a9e55 100%);
+      border-radius: var(--radius);
+      padding: 32px 36px;
+      color: #fff;
+      margin-bottom: 36px;
+    }
+    .hero-card h2 { color: #fff; font-size: 1.7rem; border: none; }
+    .hero-card p { color: rgba(255,255,255,.88); margin-bottom: 0; }
+    .hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .hero-badges span {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px; padding: 4px 14px;
+      font-size: 0.78rem; font-weight: 600;
+    }
+
+    /* ── Callout Boxes ─────────────────────────────────────────────────── */
+    .callout {
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin: 16px 0;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .callout .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .callout.info    { background: var(--info-bg);   border-left: 4px solid var(--info); }
+    .callout.warning { background: var(--accent-bg); border-left: 4px solid var(--accent); }
+    .callout.danger  { background: var(--danger-bg); border-left: 4px solid var(--danger); }
+    .callout.success { background: var(--brand-bg);  border-left: 4px solid var(--brand); }
+    .callout p { margin-bottom: 0; }
+
+    /* ── Tables ────────────────────────────────────────────────────────── */
+    .doc-table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 0.88rem; }
+    .doc-table th {
+      background: var(--brand);
+      color: #fff;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    .doc-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .doc-table tr:hover td { background: var(--brand-bg); }
+    .doc-table tr:last-child td { border-bottom: none; }
+
+    /* ── Shortcode Cards ───────────────────────────────────────────────── */
+    .sc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px; margin: 20px 0;
+    }
+    .sc-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: box-shadow .15s;
+    }
+    .sc-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .sc-card .sc-tag {
+      background: var(--brand-bg);
+      color: var(--brand);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+    .sc-card h4 { margin: 8px 0 6px; }
+    .sc-card p { font-size: 0.85rem; color: var(--muted); margin: 0; }
+
+    /* ── Step List ─────────────────────────────────────────────────────── */
+    .step-list { list-style: none; padding: 0; margin: 20px 0; }
+    .step-list li {
+      display: flex; gap: 16px; align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      background: var(--brand);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.9rem;
+    }
+    .step-body h4 { margin: 2px 0 6px; }
+    .step-body p { margin: 0; font-size: 0.9rem; color: #374151; }
+
+    /* ── Settings rows ─────────────────────────────────────────────────── */
+    .settings-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .settings-row summary {
+      padding: 12px 18px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .settings-row summary::after { content: '▾'; color: var(--muted); }
+    .settings-row[open] summary::after { content: '▴'; }
+    .settings-row[open] summary { border-bottom: 1px solid var(--border); }
+    .settings-row .settings-body { padding: 16px 18px; background: #fafafa; }
+
+    /* ── API Endpoint Cards ────────────────────────────────────────────── */
+    .endpoint-list { margin: 16px 0; }
+    .endpoint {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .endpoint-header {
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .method-badge {
+      font-size: 0.72rem; font-weight: 800;
+      border-radius: 4px; padding: 3px 8px;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .method-badge.get  { background: #d1fae5; color: #065f46; }
+    .method-badge.post { background: #dbeafe; color: #1e40af; }
+    .method-badge.del  { background: #fee2e2; color: #991b1b; }
+    .method-badge.put  { background: #ede9fe; color: #5b21b6; }
+    .endpoint-path { font-family: monospace; font-size: 0.88rem; font-weight: 600; }
+    .endpoint-desc { margin-left: auto; font-size: 0.82rem; color: var(--muted); }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--brand);
+      color: rgba(255,255,255,.8);
+      text-align: center;
+      padding: 24px;
+      font-size: 0.82rem;
+    }
+    footer strong { color: #fff; }
+
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { padding: 24px 20px 60px; }
+      .sc-grid { grid-template-columns: 1fr 1fr; }
+      .top-header .github-link { display: none; }
+    }
+    @media (max-width: 480px) {
+      .sc-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ TOP HEADER ══════════════════════════════════ -->
+<header class="top-header">
+  <div class="logo-mark">🏸</div>
+  <h1>Squash Club Booking – Documentation</h1>
+  <span class="badge">v2.0.1</span>
+  <a class="github-link" href="#installation">Quick Start →</a>
+</header>
+
+<!-- ══════════════════════════════════ LAYOUT ══════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar" aria-label="Table of Contents">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Getting Started</div>
+      <a class="top-link" href="#overview">Overview</a>
+      <a href="#requirements">System Requirements</a>
+      <a href="#installation">Installation Guide</a>
+      <a href="#first-setup">First-Time Setup</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Services</div>
+      <a href="#sunday-clinics">Sunday Squash Clinics</a>
+      <a href="#private-lessons">Private Lessons</a>
+      <a href="#summer-camps">Summer Camps</a>
+      <a href="#waitlist">Waitlist System</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Frontend</div>
+      <a href="#shortcodes">Shortcodes Reference</a>
+      <a href="#shortcode-usage">Page Setup</a>
+      <a href="#booking-flow">Customer Booking Flow</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Admin Panel</div>
+      <a href="#admin-dashboard">Dashboard Overview</a>
+      <a href="#admin-views">12 Admin Views</a>
+      <a href="#roles">Roles & Permissions</a>
+      <a href="#settings">Plugin Settings</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Payments & Emails</div>
+      <a href="#woocommerce">WooCommerce Integration</a>
+      <a href="#email">Email Notifications</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Advanced</div>
+      <a href="#rest-api">REST API</a>
+      <a href="#cron">Cron / Automation</a>
+      <a href="#database">Database Schema</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Reference</div>
+      <a href="#faq">FAQ</a>
+      <a href="#changelog">Changelog</a>
+    </div>
+  </nav>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content">
+
+    <!-- ════════════ OVERVIEW ════════════ -->
+    <section id="overview">
+      <div class="hero-card">
+        <h2>🏸 Squash Club Booking &amp; Management System</h2>
+        <p>
+          A complete, production-ready WordPress plugin built exclusively for squash clubs.
+          It replaces fragmented booking forms with one integrated platform covering Sunday Clinics,
+          Saturday Private Lessons, Summer Camp Registrations, automated waitlists, WooCommerce
+          payments, and branded email notifications — all from a modern custom admin dashboard.
+        </p>
+        <div class="hero-badges">
+          <span>✅ WordPress 6.0+</span>
+          <span>✅ PHP 7.4+</span>
+          <span>✅ WooCommerce Required</span>
+          <span>✅ 12 Custom DB Tables</span>
+          <span>✅ Mobile Responsive</span>
+        </div>
+      </div>
+
+      <h3>What This Plugin Does</h3>
+      <p>At a high level, the plugin provides three booking services for your club members:</p>
+      <ul>
+        <li><strong>Sunday Squash Clinics</strong> – Junior &amp; Adult group sessions every Sunday with per-slot capacity, waitlist, and automatic slot generation.</li>
+        <li><strong>Saturday Private &amp; Semi-Private Lessons</strong> – 1-on-1 or 2-player coaching sessions with real-time slot availability per coach.</li>
+        <li><strong>Summer Camp Registration</strong> – Multi-week youth academies with age validation, parent info, and payment deadlines.</li>
+      </ul>
+      <p>All bookings go through <strong>WooCommerce checkout</strong>, and customers receive branded confirmation emails automatically.</p>
+    </section>
+
+    <!-- ════════════ REQUIREMENTS ════════════ -->
+    <section id="requirements">
+      <h2><span class="icon">⚙️</span> System Requirements</h2>
+      <table class="doc-table">
+        <thead>
+          <tr><th>Requirement</th><th>Minimum</th><th>Recommended</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>WordPress</td><td>6.0</td><td>6.5+</td></tr>
+          <tr><td>PHP</td><td>7.4</td><td>8.1+</td></tr>
+          <tr><td>MySQL / MariaDB</td><td>5.7 / 10.3</td><td>8.0 / 10.6+</td></tr>
+          <tr><td>WooCommerce</td><td>7.0 (required)</td><td>8.x+</td></tr>
+          <tr><td>Server Memory</td><td>128 MB</td><td>256 MB+</td></tr>
+          <tr><td>WP-Cron</td><td>Must be enabled</td><td>Use real cron for production</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout warning">
+        <span class="callout-icon">⚠️</span>
+        <p><strong>WooCommerce is mandatory.</strong> The plugin will not function without WooCommerce installed and active. Payment processing, order creation, and status synchronisation all depend on it.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ INSTALLATION ════════════ -->
+    <section id="installation">
+      <h2><span class="icon">📦</span> Installation Guide</h2>
+
+      <h3>Method 1: Manual Upload (Recommended)</h3>
+      <ol class="step-list">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Upload the plugin folder</h4>
+            <p>Copy the <code>squash-club-booking</code> folder into <code>wp-content/plugins/</code> on your server via FTP, cPanel File Manager, or SFTP.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Activate WooCommerce first</h4>
+            <p>Go to <strong>WP Admin → Plugins</strong> and ensure WooCommerce is installed and activated before proceeding.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Activate the plugin</h4>
+            <p>Find <strong>Squash Club Booking &amp; Management System</strong> in the plugins list and click <strong>Activate</strong>.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Automatic database setup</h4>
+            <p>Upon activation, the plugin automatically creates <strong>12 custom database tables</strong> and seeds them with 9 coaches, 4 weeks of Sunday clinic slots, and 3 summer camp programs.</p>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Verify the admin menu</h4>
+            <p>A new <strong>Squash Club</strong> menu item will appear in the WP Admin sidebar — your dedicated management dashboard.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <p>The plugin comes pre-seeded with realistic sample data. You can clear and replace it via <strong>Squash Club → Settings → Reset Tables</strong> at any time.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ FIRST SETUP ════════════ -->
+    <section id="first-setup">
+      <h2><span class="icon">🔧</span> First-Time Setup</h2>
+      <p>After activation, follow these steps to configure the plugin for your club:</p>
+
+      <h3>Step 1 – Configure Club Settings</h3>
+      <p>Go to <strong>Squash Club → Settings</strong> and fill in:</p>
+      <ul>
+        <li><strong>Club Name</strong> – Used in emails and booking confirmations.</li>
+        <li><strong>Admin Email</strong> – Receives alerts for new bookings and camp registrations.</li>
+        <li><strong>Currency</strong> – Default is USD. Change to your local currency.</li>
+        <li><strong>Timezone</strong> – Should match your WordPress timezone setting.</li>
+        <li><strong>Lesson Pricing</strong> – Set your private lesson rate (default $80) and semi-private rate (default $40).</li>
+        <li><strong>Clinic Pricing</strong> – Junior rate (default $25) and Adult rate (default $30).</li>
+      </ul>
+
+      <h3>Step 2 – Create Frontend Pages</h3>
+      <p>Navigate to <strong>Squash Club → Settings → Shortcode Pages</strong> and click <strong>"Create Pages Automatically"</strong>. This creates 5 WordPress pages with the correct shortcodes embedded:</p>
+      <table class="doc-table">
+        <thead><tr><th>Page Name</th><th>Slug</th><th>Shortcode</th></tr></thead>
+        <tbody>
+          <tr><td>Sunday Squash Clinics</td><td><code>/sunday-clinics</code></td><td><code>[scb_sunday_clinic]</code></td></tr>
+          <tr><td>Private Lessons</td><td><code>/private-lessons</code></td><td><code>[scb_private_lesson]</code></td></tr>
+          <tr><td>Summer Camps</td><td><code>/summer-camps</code></td><td><code>[scb_summer_camp]</code></td></tr>
+          <tr><td>Booking Status</td><td><code>/booking-status</code></td><td><code>[scb_booking_status]</code></td></tr>
+          <tr><td>My Bookings</td><td><code>/my-bookings</code></td><td><code>[scb_my_bookings]</code></td></tr>
+        </tbody>
+      </table>
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <p>You can also create pages manually and paste shortcodes yourself. Each shortcode is a self-contained booking widget.</p>
+      </div>
+
+      <h3>Step 3 – Add Coaches</h3>
+      <p>Go to <strong>Squash Club → Coaches</strong> to edit or add your coaching staff. For each coach you can set:</p>
+      <ul>
+        <li>Name, photo, bio, and specialties</li>
+        <li>Hourly rate &amp; semi-private rate</li>
+        <li>Saturday availability schedule (working hours, lunch break, day-off)</li>
+        <li>Active / Inactive status</li>
+      </ul>
+
+      <h3>Step 4 – Set Up Clinic Slots</h3>
+      <p>Go to <strong>Squash Club → Sunday Clinics</strong> and click <strong>"Generate 4 Weeks"</strong> to auto-create the next month of clinic sessions based on your configured times and capacities.</p>
+
+      <h3>Step 5 – Add Menus &amp; Go Live</h3>
+      <p>Add the booking pages to your WordPress navigation menus via <strong>Appearance → Menus</strong>, then your site is ready for bookings!</p>
+    </section>
+
+    <!-- ════════════ SUNDAY CLINICS ════════════ -->
+    <section id="sunday-clinics">
+      <h2><span class="icon">🗓️</span> Sunday Squash Clinics</h2>
+      <p>Clinics are weekly group training sessions held every Sunday. The system supports both Junior and Adult categories with separate time slots and pricing.</p>
+
+      <h3>Default Schedule</h3>
+      <table class="doc-table">
+        <thead><tr><th>Time</th><th>Duration</th><th>Category</th><th>Default Price</th></tr></thead>
+        <tbody>
+          <tr><td>9:00 AM – 10:00 AM</td><td>60 min</td><td>Junior</td><td>$25</td></tr>
+          <tr><td>10:00 AM – 11:00 AM</td><td>60 min</td><td>Junior</td><td>$25</td></tr>
+          <tr><td>11:00 AM – 12:00 PM</td><td>60 min</td><td>Junior</td><td>$25</td></tr>
+          <tr><td>12:00 PM – 1:00 PM</td><td>60 min</td><td>Adult</td><td>$30</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Key Features</h3>
+      <ul>
+        <li><strong>Capacity Control</strong> – Default 15 players per slot. Fully configurable per slot.</li>
+        <li><strong>Atomic Booking Counter</strong> – Prevents double-booking under concurrent requests.</li>
+        <li><strong>Automatic Slot Generation</strong> – "Generate 4 Weeks" button or weekly cron auto-fills the schedule.</li>
+        <li><strong>Booking Window</strong> – Configurable: opens X days before slot, closes Y hours before it starts.</li>
+        <li><strong>Waitlist</strong> – When full, customers can join the waitlist. They are promoted automatically when a spot opens.</li>
+      </ul>
+
+      <h3>Category Filtering (Shortcode Attribute)</h3>
+      <p>You can restrict the clinic booking widget to show only one category:</p>
+      <pre><code>[scb_sunday_clinic category="junior"]
+[scb_sunday_clinic category="adult"]
+[scb_sunday_clinic]  &lt;!-- shows all --&gt;</code></pre>
+
+      <h3>Admin Management</h3>
+      <p>Under <strong>Squash Club → Sunday Clinics</strong> you can:</p>
+      <ul>
+        <li>View all upcoming slots with live capacity progress bars</li>
+        <li>Open an attendee list modal per slot</li>
+        <li>Add, edit, or delete individual slots</li>
+        <li>Set slot status: <code>open</code>, <code>full</code>, <code>cancelled</code></li>
+        <li>Generate the next 4 weeks of slots with one click</li>
+      </ul>
+    </section>
+
+    <!-- ════════════ PRIVATE LESSONS ════════════ -->
+    <section id="private-lessons">
+      <h2><span class="icon">🎾</span> Private &amp; Semi-Private Lessons</h2>
+      <p>Saturday coaching sessions with certified squash professionals. Customers choose a coach, pick an available time slot in real time, and complete payment via WooCommerce.</p>
+
+      <h3>Lesson Types</h3>
+      <table class="doc-table">
+        <thead><tr><th>Type</th><th>Players</th><th>Default Price</th><th>Default Duration</th></tr></thead>
+        <tbody>
+          <tr><td>Private Lesson</td><td>1 player (1-on-1)</td><td>$80</td><td>60 min</td></tr>
+          <tr><td>Semi-Private Lesson</td><td>2 players</td><td>$40 each</td><td>60 min</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Booking Process</h3>
+      <ol>
+        <li>Customer selects a coach from the card gallery (photo, bio, specialties, rates shown).</li>
+        <li>Customer picks a date (Saturdays only by default).</li>
+        <li>Available time slots load in real time via the REST API.</li>
+        <li>Customer chooses Private or Semi-Private, fills in details.</li>
+        <li>Redirected to WooCommerce checkout to pay.</li>
+        <li>Booking confirmed and confirmation email sent.</li>
+      </ol>
+
+      <h3>Conflict Prevention</h3>
+      <p>The system automatically:</p>
+      <ul>
+        <li>Prevents double-booking the same coach at overlapping times</li>
+        <li>Respects each coach's configured working hours and lunch breaks</li>
+        <li>Enforces a minimum advance booking buffer (default 24 hours)</li>
+      </ul>
+
+      <h3>Admin Management</h3>
+      <p>Under <strong>Squash Club → Private Lessons</strong> you can view the weekly schedule as a timeline, see coach assignments, manage individual bookings (approve / reject / reschedule / cancel).</p>
+    </section>
+
+    <!-- ════════════ SUMMER CAMPS ════════════ -->
+    <section id="summer-camps">
+      <h2><span class="icon">☀️</span> Summer Camp Registration</h2>
+      <p>Multi-day intensive squash academies for youth players from beginner to elite competitive levels.</p>
+
+      <h3>Camp Features</h3>
+      <ul>
+        <li><strong>Age Enforcement</strong> – Each camp has configurable <code>min_age</code> and <code>max_age</code>. Registrations outside this range are rejected.</li>
+        <li><strong>Registration Deadline</strong> – Registrations close at the configured deadline date.</li>
+        <li><strong>Capacity Cap</strong> – Spots are reserved atomically and released if payment is not completed within the expiry window (default 30 min).</li>
+        <li><strong>Parent / Guardian Info</strong> – Full parent name, email, phone, emergency contact, and relationship fields.</li>
+        <li><strong>Medical &amp; Equipment Notes</strong> – Free-text fields for health conditions and equipment requirements.</li>
+        <li><strong>Liability Waiver</strong> – Digital acknowledgement checkbox before registration completes.</li>
+      </ul>
+
+      <h3>Admin Management</h3>
+      <p>Under <strong>Squash Club → Summer Camps</strong> you can create, edit, and publish camp programs. Under <strong>Camp Registrations</strong> you can view participant rosters, parent contacts, and payment statuses.</p>
+    </section>
+
+    <!-- ════════════ WAITLIST ════════════ -->
+    <section id="waitlist">
+      <h2><span class="icon">📋</span> Waitlist System</h2>
+      <p>When a clinic slot reaches full capacity, the waitlist system allows customers to queue up and be promoted automatically when a spot becomes available.</p>
+
+      <h3>How It Works</h3>
+      <ol>
+        <li>Slot reaches full capacity (<code>booked_count = capacity</code>).</li>
+        <li>Booking widget displays a "Join Waitlist" option instead of "Book Now".</li>
+        <li>Customer joins the waitlist — they receive a confirmation email with their queue position (e.g., Position #3).</li>
+        <li>When a cancellation occurs, the system automatically promotes the next customer on the waitlist.</li>
+        <li>Promoted customer receives an email alert and has a configured window (default 24 hours) to complete payment.</li>
+        <li>If the promoted customer does not pay in time, their spot is released to the next person in line.</li>
+      </ol>
+
+      <h3>Admin Waitlist Tools</h3>
+      <p>Under <strong>Squash Club → Waitlist Management</strong>:</p>
+      <ul>
+        <li>View real-time queue position for each slot</li>
+        <li><strong>1-click "Promote to Booking"</strong> – Manually promote any waitlist entry</li>
+        <li>Remove waitlist entries manually</li>
+        <li>See promotion timestamps and status</li>
+      </ul>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <p>Waitlist promotion expiry is configurable. Go to <strong>Settings → Waitlist</strong> and set the number of hours a promoted customer has to pay before the slot is offered to the next person.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ SHORTCODES ════════════ -->
+    <section id="shortcodes">
+      <h2><span class="icon">🔗</span> Shortcodes Reference</h2>
+      <p>All five frontend booking widgets are embedded into WordPress pages using shortcodes. Place them in any page or post using the WordPress editor.</p>
+
+      <div class="sc-grid">
+        <div class="sc-card">
+          <div class="sc-tag">[scb_sunday_clinic]</div>
+          <h4>Sunday Clinics</h4>
+          <p>Displays available Sunday clinic slots with capacity badges, booking form, and waitlist option.</p>
+        </div>
+        <div class="sc-card">
+          <div class="sc-tag">[scb_private_lesson]</div>
+          <h4>Private Lessons</h4>
+          <p>Coach selection cards, date picker, real-time availability slots, and booking form.</p>
+        </div>
+        <div class="sc-card">
+          <div class="sc-tag">[scb_summer_camp]</div>
+          <h4>Summer Camps</h4>
+          <p>Camp programs directory with age info, registration progress bars, and registration modal.</p>
+        </div>
+        <div class="sc-card">
+          <div class="sc-tag">[scb_my_bookings]</div>
+          <h4>My Bookings (Portal)</h4>
+          <p>Logged-in member portal showing upcoming and past bookings, statuses, and reference numbers.</p>
+        </div>
+        <div class="sc-card">
+          <div class="sc-tag">[scb_booking_status]</div>
+          <h4>Booking Status Lookup</h4>
+          <p>Public search widget — customers enter their reference code to check booking status.</p>
+        </div>
+      </div>
+
+      <h3>Shortcode Attributes</h3>
+      <table class="doc-table">
+        <thead><tr><th>Shortcode</th><th>Attribute</th><th>Values</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>[scb_sunday_clinic]</code></td><td><code>category</code></td><td><code>junior</code> | <code>adult</code></td><td>Filter to show only junior or adult slots</td></tr>
+          <tr><td><code>[scb_booking_status]</code></td><td><code>ref</code></td><td>Any booking reference</td><td>Pre-fill the status lookup field with a reference code</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ════════════ SHORTCODE USAGE ════════════ -->
+    <section id="shortcode-usage">
+      <h2><span class="icon">📄</span> Page Setup Guide</h2>
+
+      <h3>Creating Pages Manually</h3>
+      <p>If you prefer to set up pages yourself instead of using the auto-create feature:</p>
+
+      <ol>
+        <li>Go to <strong>Pages → Add New</strong> in WordPress Admin.</li>
+        <li>Give the page a title (e.g., "Sunday Clinics").</li>
+        <li>In the block editor, add a <strong>Shortcode block</strong> and paste the shortcode.</li>
+        <li>Publish the page.</li>
+        <li>Go to <strong>Squash Club → Settings → Shortcode Pages</strong> and link this page so the plugin knows its location.</li>
+      </ol>
+
+      <div class="callout warning">
+        <span class="callout-icon">⚠️</span>
+        <p>The <code>[scb_my_bookings]</code> shortcode requires the user to be <strong>logged in</strong>. Consider restricting that page to logged-in users using a membership plugin or WooCommerce's account functionality.</p>
+      </div>
+
+      <h3>Recommended Theme Compatibility</h3>
+      <p>The plugin's frontend widgets are self-styled with scoped CSS. They work with any WordPress theme that uses standard page templates. For best results, use a full-width page template (no sidebar) for booking pages.</p>
+    </section>
+
+    <!-- ════════════ BOOKING FLOW ════════════ -->
+    <section id="booking-flow">
+      <h2><span class="icon">🔄</span> Customer Booking Flow</h2>
+
+      <h3>Clinic / Lesson / Camp Booking</h3>
+      <ol>
+        <li><strong>Visit page</strong> – Customer navigates to the booking page on your website.</li>
+        <li><strong>Select service</strong> – Chooses a slot, coach, or camp program.</li>
+        <li><strong>Fill details</strong> – Enters name, email, phone, skill level, and any service-specific fields.</li>
+        <li><strong>Submit form</strong> – A WooCommerce order is created automatically in the background.</li>
+        <li><strong>Checkout redirect</strong> – Customer is taken to the WooCommerce payment page to pay.</li>
+        <li><strong>Payment</strong> – Customer completes payment via any active WooCommerce gateway (Stripe, PayPal, etc.).</li>
+        <li><strong>Confirmation</strong> – Booking status updates to <code>paid / approved</code>. A branded HTML confirmation email is sent to the customer.</li>
+        <li><strong>Admin alert</strong> – Club management receives an email notification of the new booking.</li>
+      </ol>
+
+      <h3>Booking Reference Numbers</h3>
+      <p>Every booking receives a unique reference in the format:</p>
+      <ul>
+        <li>Clinic: <code>SCB-CLN-20261025-WT2M</code></li>
+        <li>Lesson: <code>SCB-LES-20261024-376Y</code></li>
+        <li>Camp: <code>SCB-CMP-20261019-GI0T</code></li>
+      </ul>
+      <p>Customers can use this reference on the <strong>Booking Status</strong> page to track their booking at any time.</p>
+
+      <h3>Unpaid Booking Expiry</h3>
+      <p>If a customer abandons checkout without paying, the reserved capacity is automatically released after the configured timeout (default <strong>60 minutes</strong>). The WooCommerce order is left in <code>pending</code> status.</p>
+    </section>
+
+    <!-- ════════════ ADMIN DASHBOARD ════════════ -->
+    <section id="admin-dashboard">
+      <h2><span class="icon">🖥️</span> Admin Dashboard</h2>
+      <p>Access the full management dashboard via <strong>WP Admin → Squash Club</strong>. It opens a modern single-page application interface with 14 integrated views.</p>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <p>Direct URL: <code>yourdomain.com/wp-admin/admin.php?page=scb-dashboard</code></p>
+      </div>
+    </section>
+
+    <!-- ════════════ ADMIN VIEWS ════════════ -->
+    <section id="admin-views">
+      <h2><span class="icon">📊</span> Admin Views (14 Sections)</h2>
+
+      <table class="doc-table">
+        <thead><tr><th>#</th><th>View</th><th>What You Can Do</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>Overview</strong></td><td>Live KPIs (revenue, bookings, waitlisted players), quick actions, recent activity feed</td></tr>
+          <tr><td>2</td><td><strong>All Bookings</strong></td><td>Search, filter by service/status/date, view details, approve, reject, reschedule, cancel</td></tr>
+          <tr><td>3</td><td><strong>Sunday Clinics</strong></td><td>Slot management, capacity bars, attendee modals, generate 4 weeks, add/edit slots</td></tr>
+          <tr><td>4</td><td><strong>Private Lessons</strong></td><td>Weekly schedule timeline, coach assignments, participant details, conflict management</td></tr>
+          <tr><td>5</td><td><strong>Coaches Directory</strong></td><td>Staff profiles, photos, bios, hourly rates, Saturday availability, active/inactive toggle</td></tr>
+          <tr><td>6</td><td><strong>Master Schedule</strong></td><td>Chronological timeline of all weekend sessions, clinic times, and private lesson blocks</td></tr>
+          <tr><td>7</td><td><strong>Waitlist Management</strong></td><td>Queue view, 1-click promote to booking, automatic capacity adjustment, removal</td></tr>
+          <tr><td>8</td><td><strong>Summer Camps</strong></td><td>Camp editor (dates, age brackets, pricing, capacity), publication toggle, participant rosters</td></tr>
+          <tr><td>9</td><td><strong>Camp Registrations</strong></td><td>Registered athletes list, parent/guardian info, emergency contacts, payment status</td></tr>
+          <tr><td>10</td><td><strong>Payments</strong></td><td>Financial transaction log, WooCommerce order links, refund records, payment gateway info</td></tr>
+          <tr><td>11</td><td><strong>Customers</strong></td><td>Member directory, total visits, lifetime spend, booking history, contact details</td></tr>
+          <tr><td>12</td><td><strong>Notifications &amp; Logs</strong></td><td>Email audit trail, delivery statuses, recipient addresses, system audit logs</td></tr>
+          <tr><td>13</td><td><strong>Reports &amp; Exports</strong></td><td>Revenue metrics, attendance stats, CSV export (Bookings, Camp Regs, Customers)</td></tr>
+          <tr><td>14</td><td><strong>Settings</strong></td><td>Club info, pricing, operating hours, email config, WooCommerce options, page setup</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ════════════ ROLES ════════════ -->
+    <section id="roles">
+      <h2><span class="icon">🔐</span> Roles &amp; Permissions</h2>
+      <p>Administrators have full access automatically. For staff members (front desk, coaches, managers), assign individual capabilities:</p>
+
+      <table class="doc-table">
+        <thead><tr><th>Capability</th><th>What It Allows</th></tr></thead>
+        <tbody>
+          <tr><td><code>scb_access_dashboard</code></td><td>Access the Squash Club admin dashboard</td></tr>
+          <tr><td><code>scb_view_bookings</code></td><td>View all bookings (read-only)</td></tr>
+          <tr><td><code>scb_manage_bookings</code></td><td>Create, update, cancel, reschedule bookings</td></tr>
+          <tr><td><code>scb_approve_bookings</code></td><td>Approve or reject pending bookings</td></tr>
+          <tr><td><code>scb_manage_clinics</code></td><td>Create and edit Sunday clinic slots</td></tr>
+          <tr><td><code>scb_manage_lessons</code></td><td>Manage private lesson bookings</td></tr>
+          <tr><td><code>scb_manage_coaches</code></td><td>Add, edit, and deactivate coach profiles</td></tr>
+          <tr><td><code>scb_manage_schedules</code></td><td>Edit coach availability schedules</td></tr>
+          <tr><td><code>scb_manage_camps</code></td><td>Create and edit camp programs and registrations</td></tr>
+          <tr><td><code>scb_manage_waitlist</code></td><td>Promote, remove, and manage waitlist entries</td></tr>
+          <tr><td><code>scb_manage_payments</code></td><td>View and sync payment records</td></tr>
+          <tr><td><code>scb_view_reports</code></td><td>Access Reports &amp; Exports section</td></tr>
+          <tr><td><code>scb_export_data</code></td><td>Download CSV exports</td></tr>
+          <tr><td><code>scb_manage_settings</code></td><td>Change plugin settings</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <p>Use a role management plugin such as <strong>Members</strong> or <strong>User Role Editor</strong> to assign these capabilities to custom WordPress roles.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ SETTINGS ════════════ -->
+    <section id="settings">
+      <h2><span class="icon">⚙️</span> Plugin Settings Reference</h2>
+      <p>All settings are under <strong>Squash Club → Settings</strong>. They are stored in the custom <code>wp_scb_settings</code> database table with in-memory caching for performance.</p>
+
+      <details class="settings-row">
+        <summary>🏢 General Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>timezone</code></td><td>WP timezone</td><td>Timezone for all date/time calculations</td></tr>
+              <tr><td><code>currency</code></td><td>USD</td><td>Currency code for pricing and WooCommerce orders</td></tr>
+              <tr><td><code>date_format</code></td><td>Y-m-d</td><td>Date display format (PHP date format string)</td></tr>
+              <tr><td><code>time_format</code></td><td>g:i A</td><td>Time display format (12h with AM/PM)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>🗓️ Sunday Clinic Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>clinic_enabled</code></td><td>true</td><td>Enable/disable the clinic booking service</td></tr>
+              <tr><td><code>clinic_capacity_default</code></td><td>15</td><td>Default players per clinic slot</td></tr>
+              <tr><td><code>clinic_booking_open_days</code></td><td>7</td><td>How many days before a slot opens for booking</td></tr>
+              <tr><td><code>clinic_booking_close_hours</code></td><td>2</td><td>Hours before slot start that booking closes</td></tr>
+              <tr><td><code>clinic_price_junior</code></td><td>$25.00</td><td>Price for junior clinic sessions</td></tr>
+              <tr><td><code>clinic_price_adult</code></td><td>$30.00</td><td>Price for adult clinic sessions</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>🎾 Private Lesson Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>lesson_enabled</code></td><td>true</td><td>Enable/disable the lesson booking service</td></tr>
+              <tr><td><code>lesson_price_private</code></td><td>$80.00</td><td>Default private lesson price (1-on-1)</td></tr>
+              <tr><td><code>lesson_price_semi_private</code></td><td>$40.00</td><td>Default semi-private lesson price per player</td></tr>
+              <tr><td><code>lesson_duration_default</code></td><td>60 min</td><td>Default lesson duration in minutes</td></tr>
+              <tr><td><code>lesson_booking_buffer</code></td><td>24 hours</td><td>Minimum advance notice required for bookings</td></tr>
+              <tr><td><code>lesson_cancellation_hours</code></td><td>24 hours</td><td>Cancellation cutoff (hours before lesson)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>☀️ Summer Camp Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>camp_enabled</code></td><td>true</td><td>Enable/disable camp registration</td></tr>
+              <tr><td><code>camp_reservation_expiry</code></td><td>30 min</td><td>Time to hold a spot without payment before releasing</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>💳 Payment Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>payment_enabled</code></td><td>true</td><td>Enable/disable payment processing via WooCommerce</td></tr>
+              <tr><td><code>pending_payment_expiry</code></td><td>60 min</td><td>Time before unpaid WooCommerce order releases capacity</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>📧 Notification Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>admin_email</code></td><td>WP admin email</td><td>Destination email for new booking alerts</td></tr>
+              <tr><td><code>admin_email_new_booking</code></td><td>true</td><td>Send admin alert on new booking</td></tr>
+              <tr><td><code>admin_email_new_camp</code></td><td>true</td><td>Send admin alert on new camp registration</td></tr>
+              <tr><td><code>email_from_name</code></td><td>Site name</td><td>Sender name shown in customer emails</td></tr>
+              <tr><td><code>email_from_address</code></td><td>WP admin email</td><td>Sender email address for all outgoing notifications</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>📋 Waitlist Settings</summary>
+        <div class="settings-body">
+          <table class="doc-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>waitlist_enabled</code></td><td>true</td><td>Enable/disable the waitlist system</td></tr>
+              <tr><td><code>waitlist_promotion_expiry</code></td><td>24 hours</td><td>Hours a promoted waitlist customer has to pay</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- ════════════ WOOCOMMERCE ════════════ -->
+    <section id="woocommerce">
+      <h2><span class="icon">🛒</span> WooCommerce Integration</h2>
+
+      <h3>How Orders Are Created</h3>
+      <p>When a customer submits a booking form, the plugin programmatically creates a WooCommerce order with:</p>
+      <ul>
+        <li>Correct item name (e.g., "Sunday Junior Clinic – Nov 10, 2026 9:00 AM")</li>
+        <li>Correct price and currency</li>
+        <li>Customer billing info pre-filled from their submitted details</li>
+        <li>Order meta containing the booking reference and service details</li>
+      </ul>
+      <p>The customer is then redirected to the WooCommerce checkout payment page to pay using any active payment gateway (Stripe, PayPal, bank transfer, etc.).</p>
+
+      <h3>Bidirectional Status Sync</h3>
+      <table class="doc-table">
+        <thead><tr><th>WooCommerce Order Status</th><th>Booking Status Update</th></tr></thead>
+        <tbody>
+          <tr><td><code>completed</code> or <code>processing</code></td><td>Booking → <code>paid</code> + <code>approved</code></td></tr>
+          <tr><td><code>cancelled</code> or <code>failed</code></td><td>Capacity released back to slot / camp</td></tr>
+          <tr><td><code>refunded</code></td><td>Payment status → <code>refunded</code>, audit log updated</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Recommended Payment Gateways</h3>
+      <ul>
+        <li><strong>Stripe for WooCommerce</strong> (official plugin) – Credit/debit cards, Apple Pay, Google Pay</li>
+        <li><strong>PayPal Payments</strong> – PayPal, Pay Later</li>
+        <li><strong>WooCommerce Payments</strong> – Stripe-powered, built into WooCommerce</li>
+        <li><strong>Cheque / Bank Transfer</strong> – Free gateways bundled with WooCommerce (manual payment)</li>
+      </ul>
+
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <p>No additional configuration is needed in the plugin for payment gateways — just activate your preferred gateway in <strong>WooCommerce → Settings → Payments</strong> and it will automatically be available at checkout.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ EMAIL ════════════ -->
+    <section id="email">
+      <h2><span class="icon">📧</span> Email Notifications</h2>
+      <p>All outgoing emails use a custom branded responsive HTML template with inline CSS that renders correctly across email clients.</p>
+
+      <h3>Customer Emails Sent Automatically</h3>
+      <table class="doc-table">
+        <thead><tr><th>Trigger</th><th>Email Sent To Customer</th></tr></thead>
+        <tbody>
+          <tr><td>Booking submitted (pending payment)</td><td>Booking Confirmation with reference code, date/time, payment link</td></tr>
+          <tr><td>Payment completed</td><td>Payment received confirmation</td></tr>
+          <tr><td>Joined waitlist</td><td>Waitlist Entry Confirmation with queue position</td></tr>
+          <tr><td>Promoted from waitlist</td><td>Waitlist Promotion Alert with payment deadline</td></tr>
+          <tr><td>Camp registration submitted</td><td>Camp Registration Confirmation with participant details</td></tr>
+          <tr><td>Booking cancelled</td><td>Cancellation notice</td></tr>
+          <tr><td>Booking rescheduled</td><td>Reschedule confirmation with new date/time</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Admin / Club Notifications</h3>
+      <table class="doc-table">
+        <thead><tr><th>Trigger</th><th>Email Sent To Admin</th></tr></thead>
+        <tbody>
+          <tr><td>Any new booking submitted</td><td>New Booking Alert (if <code>admin_email_new_booking = true</code>)</td></tr>
+          <tr><td>Any new camp registration</td><td>New Camp Registration Alert (if <code>admin_email_new_camp = true</code>)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Email Delivery Logs</h3>
+      <p>Every email sent (or failed) is logged in the database. View the full email audit trail under <strong>Squash Club → Notifications &amp; Logs</strong> including:</p>
+      <ul>
+        <li>Recipient name and email address</li>
+        <li>Email subject</li>
+        <li>Delivery status (<code>sent</code> / <code>failed</code>)</li>
+        <li>Timestamp</li>
+        <li>Notification type/key</li>
+      </ul>
+    </section>
+
+    <!-- ════════════ REST API ════════════ -->
+    <section id="rest-api">
+      <h2><span class="icon">🔌</span> REST API Reference</h2>
+      <p>All endpoints are under the namespace <code>/wp-json/scb/v1/</code>. Authenticated endpoints require WordPress authentication (cookie auth or application passwords).</p>
+
+      <h3>Public Endpoints (No Auth Required)</h3>
+      <div class="endpoint-list">
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/clinic-slots/public</span>
+            <span class="endpoint-desc">?category=junior|adult</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/coaches/public</span>
+            <span class="endpoint-desc">Active coaches list</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/coaches/{id}/available-slots</span>
+            <span class="endpoint-desc">?date=YYYY-MM-DD</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/camps</span>
+            <span class="endpoint-desc">Published camps list</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/booking/status</span>
+            <span class="endpoint-desc">?ref=SCB-CLN-...</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Authenticated Customer Endpoints (Login Required)</h3>
+      <div class="endpoint-list">
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-path">/wp-json/scb/v1/book/clinic</span>
+            <span class="endpoint-desc">Submit clinic booking</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-path">/wp-json/scb/v1/book/lesson</span>
+            <span class="endpoint-desc">Submit lesson booking</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge post">POST</span>
+            <span class="endpoint-path">/wp-json/scb/v1/register/camp</span>
+            <span class="endpoint-desc">Submit camp registration</span>
+          </div>
+        </div>
+        <div class="endpoint">
+          <div class="endpoint-header">
+            <span class="method-badge get">GET</span>
+            <span class="endpoint-path">/wp-json/scb/v1/my-bookings</span>
+            <span class="endpoint-desc">Current user's bookings &amp; camp registrations</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Admin Endpoints (Capability Required)</h3>
+      <div class="endpoint-list">
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge get">GET</span><span class="endpoint-path">/wp-json/scb/v1/bookings</span><span class="endpoint-desc">Filterable bookings list</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/bookings/{id}/approve</span><span class="endpoint-desc">Approve a booking</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/bookings/{id}/reject</span><span class="endpoint-desc">Reject a booking</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/bookings/{id}/cancel</span><span class="endpoint-desc">Cancel a booking</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/bookings/{id}/reschedule</span><span class="endpoint-desc">Reschedule a booking</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/waitlist/{id}/promote</span><span class="endpoint-desc">Promote waitlist entry</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/clinic-slots/generate</span><span class="endpoint-desc">Auto-generate 4 weeks of slots</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge get">GET</span><span class="endpoint-path">/wp-json/scb/v1/reports/summary</span><span class="endpoint-desc">Revenue &amp; attendance summary</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge get">GET</span><span class="endpoint-path">/wp-json/scb/v1/reports/export</span><span class="endpoint-desc">?type=bookings|camps|customers – CSV export</span></div></div>
+        <div class="endpoint"><div class="endpoint-header"><span class="method-badge post">POST</span><span class="endpoint-path">/wp-json/scb/v1/payments/sync</span><span class="endpoint-desc">Force reconcile WooCommerce orders</span></div></div>
+      </div>
+    </section>
+
+    <!-- ════════════ CRON ════════════ -->
+    <section id="cron">
+      <h2><span class="icon">⏱️</span> Automated Cron Tasks</h2>
+      <p>The plugin registers three background tasks with WordPress Cron (<code>WP-Cron</code>):</p>
+
+      <table class="doc-table">
+        <thead><tr><th>Task</th><th>Frequency</th><th>What It Does</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>scb_weekly_clinic_generation</code></td>
+            <td>Weekly</td>
+            <td>Auto-generates the next 4 weeks of Sunday clinic slots based on the configured schedule</td>
+          </tr>
+          <tr>
+            <td><code>scb_cleanup_abandoned_checkouts</code></td>
+            <td>Hourly</td>
+            <td>Releases reserved capacity from bookings where the customer never completed payment</td>
+          </tr>
+          <tr>
+            <td><code>scb_check_waitlist_expiry</code></td>
+            <td>Hourly</td>
+            <td>Checks promoted waitlist entries that exceeded payment deadline and offers the spot to the next player</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warning">
+        <span class="callout-icon">⚠️</span>
+        <p><strong>WP-Cron relies on website traffic</strong> to trigger. For high-reliability production use, disable WP-Cron in <code>wp-config.php</code> and set up a real server cron job: <code>*/15 * * * * wget -q -O- https://yourdomain.com/wp-cron.php?doing_wp_cron</code></p>
+      </div>
+    </section>
+
+    <!-- ════════════ DATABASE ════════════ -->
+    <section id="database">
+      <h2><span class="icon">🗄️</span> Database Schema</h2>
+      <p>The plugin creates 12 dedicated database tables on activation:</p>
+
+      <table class="doc-table">
+        <thead><tr><th>#</th><th>Table Name</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>wp_scb_settings</code></td><td>Plugin configuration key-value store</td></tr>
+          <tr><td>2</td><td><code>wp_scb_coaches</code></td><td>Coach profiles, specialties, bios, photos, hourly rates</td></tr>
+          <tr><td>3</td><td><code>wp_scb_coach_availability</code></td><td>Weekly working hours, lunch breaks, day-of-week rules per coach</td></tr>
+          <tr><td>4</td><td><code>wp_scb_clinic_slots</code></td><td>Sunday clinic time slots, categories, capacity, and attendee counts</td></tr>
+          <tr><td>5</td><td><code>wp_scb_bookings</code></td><td>Master booking records (clinics, private lessons, semi-private lessons)</td></tr>
+          <tr><td>6</td><td><code>wp_scb_booking_participants</code></td><td>Individual player details, skill levels, and secondary player info</td></tr>
+          <tr><td>7</td><td><code>wp_scb_waitlist</code></td><td>Waitlist queue with positions, promotion timestamps, and status</td></tr>
+          <tr><td>8</td><td><code>wp_scb_camps</code></td><td>Summer camp programs, age limits, capacities, deadlines</td></tr>
+          <tr><td>9</td><td><code>wp_scb_camp_registrations</code></td><td>Camp attendees, parent/guardian info, medical notes, liability waiver</td></tr>
+          <tr><td>10</td><td><code>wp_scb_payments</code></td><td>Financial transactions linked to WooCommerce orders and refunds</td></tr>
+          <tr><td>11</td><td><code>wp_scb_notifications</code></td><td>Outgoing email delivery logs, subjects, recipients, and timestamps</td></tr>
+          <tr><td>12</td><td><code>wp_scb_audit_log</code></td><td>Administrative audit trail – actions, old values, new values, timestamps</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout danger">
+        <span class="callout-icon">⛔</span>
+        <p><strong>Deactivating the plugin does NOT delete the database tables.</strong> To fully remove all data, use <strong>Squash Club → Settings → Reset Tables</strong> before deactivating, or manually run the uninstaller script.</p>
+      </div>
+    </section>
+
+    <!-- ════════════ FAQ ════════════ -->
+    <section id="faq">
+      <h2><span class="icon">❓</span> Frequently Asked Questions</h2>
+
+      <details class="settings-row">
+        <summary>Can customers book without creating a WordPress account?</summary>
+        <div class="settings-body">
+          <p>No. All booking submissions require the customer to be logged in. The <code>[scb_my_bookings]</code> portal and booking forms use WordPress authentication. Customers must have a WordPress account (or WooCommerce customer account) to book.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>Can I accept payment methods other than credit card?</summary>
+        <div class="settings-body">
+          <p>Yes — any WooCommerce payment gateway will work. This includes bank transfer, cheque, Stripe, PayPal, Square, and hundreds of others available in the WooCommerce marketplace. Simply install and activate your preferred gateway.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>What happens if a customer books but never pays?</summary>
+        <div class="settings-body">
+          <p>The booking is created in <code>pending</code> status and a WooCommerce order is created. If payment is not completed within the configured timeout (default 60 minutes), the hourly cron job automatically releases the reserved capacity back to the slot. The WooCommerce order remains as a record.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>Can I offer refunds through the plugin?</summary>
+        <div class="settings-body">
+          <p>Refunds are processed through WooCommerce — either via the payment gateway's refund feature or manually in <strong>WooCommerce → Orders</strong>. When a WooCommerce order is refunded, the plugin automatically updates the payment status to <code>refunded</code> in the audit log.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>How do I add more clinic time slots or change the schedule?</summary>
+        <div class="settings-body">
+          <p>Go to <strong>Squash Club → Settings</strong> and update the <code>clinic_slots</code> array with your desired times and categories. Then go to <strong>Sunday Clinics → Generate 4 Weeks</strong> to generate new slots on the updated schedule. Alternatively, add individual slots manually from the Sunday Clinics view.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>Can I limit the clinic booking widget to show only junior sessions?</summary>
+        <div class="settings-body">
+          <p>Yes. Use the shortcode attribute: <code>[scb_sunday_clinic category="junior"]</code> for junior-only or <code>[scb_sunday_clinic category="adult"]</code> for adult-only. Using <code>[scb_sunday_clinic]</code> without an attribute shows all categories.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>How do I export a list of all bookings?</summary>
+        <div class="settings-body">
+          <p>Go to <strong>Squash Club → Reports &amp; Exports</strong> and use the CSV Export buttons for Bookings, Camp Registrations, or Customers. The exported file is formatted for use in Excel or Google Sheets.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>Can I use the plugin on a multisite WordPress installation?</summary>
+        <div class="settings-body">
+          <p>The plugin is designed for standard single-site installations. Multisite support (network activation) is not officially supported in the current version. Each site in a multisite network would need its own independent activation.</p>
+        </div>
+      </details>
+
+      <details class="settings-row">
+        <summary>How do I completely remove the plugin and all its data?</summary>
+        <div class="settings-body">
+          <p>Go to <strong>Squash Club → Settings → Reset Tables</strong> to delete all 12 plugin database tables and their data. Then deactivate and delete the plugin from <strong>WP Admin → Plugins</strong>. The uninstall routine is also called automatically when you delete the plugin via the WordPress admin.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ════════════ CHANGELOG ════════════ -->
+    <section id="changelog">
+      <h2><span class="icon">📝</span> Changelog</h2>
+
+      <h3>Version 2.0.1 (Current)</h3>
+      <ul>
+        <li>Alias key support in Settings (backward compatibility for legacy setting names)</li>
+        <li>HPOS (High-Performance Order Storage) compatibility for WooCommerce admin links</li>
+        <li>Improved payment sync reconciliation with <code>sync_payments</code> endpoint</li>
+        <li>Atomic waitlist promotion with payment deadline enforcement</li>
+        <li>Audit log improvements and notification delivery tracking</li>
+      </ul>
+
+      <h3>Version 2.0.0</h3>
+      <ul>
+        <li>Complete rewrite with PSR-4 autoloading and namespaced class architecture</li>
+        <li>12 custom database tables replacing <code>wp_postmeta</code>-based storage</li>
+        <li>Custom admin SPA dashboard (12 views) replacing default WP metaboxes</li>
+        <li>WooCommerce bidirectional order synchronisation</li>
+        <li>Waitlist system with automated promotion and expiry</li>
+        <li>Granular role-based capability system</li>
+        <li>REST API (25+ endpoints)</li>
+        <li>Responsive HTML email notification system</li>
+        <li>Three WP-Cron background tasks</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════ FOOTER ══════════════════════════════════════ -->
+<footer>
+  <strong>Squash Club Booking &amp; Management System</strong> &nbsp;·&nbsp; Version 2.0.1 &nbsp;·&nbsp;
+  WordPress Plugin &nbsp;·&nbsp; Requires WooCommerce &nbsp;·&nbsp; PHP 7.4+ &nbsp;·&nbsp; WordPress 6.0+
+  <br><br>
+  Documentation last updated: November 2026
+</footer>
+
+<script>
+  /* Active sidebar link highlight on scroll */
+  const sections = document.querySelectorAll('section[id]');
+  const sideLinks = document.querySelectorAll('.sidebar a[href^="#"]');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        sideLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`.sidebar a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -60% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
