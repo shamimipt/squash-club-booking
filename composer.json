@@ -1,0 +1,21 @@
+{
+    "name": "squash-club/squash-club-booking",
+    "description": "Complete booking and registration management system for squash clubs.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Squash Club"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "SquashClubBooking\\": "includes/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
+

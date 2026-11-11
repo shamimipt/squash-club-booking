@@ -43,23 +43,17 @@ if ( version_compare( PHP_VERSION, SCB_MIN_PHP, '<' ) ) {
     return;
 }
 
-// Autoloader.
-spl_autoload_register( function( $class ) {
-    $prefix   = 'SquashClubBooking\\';
-    $base_dir = SCB_PLUGIN_DIR . 'includes/';
-
-    $len = strlen( $prefix );
-    if ( strncmp( $prefix, $class, $len ) !== 0 ) {
-        return;
-    }
-
-    $relative_class = substr( $class, $len );
-    $file           = $base_dir . str_replace( '\\', '/', $relative_class ) . '.php';
-
-    if ( file_exists( $file ) ) {
-        require $file;
-    }
-} );
+// Composer autoloader.
+if ( file_exists( SCB_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+    require_once SCB_PLUGIN_DIR . 'vendor/autoload.php';
+} else {
+    add_action( 'admin_notices', function() {
+        echo '<div class="notice notice-error"><p>' .
+            esc_html__( 'Squash Club Booking: Composer dependencies are missing. Please run "composer install".', 'squash-club-booking' ) .
+            '</p></div>';
+    } );
+    return;
+}
 
 /**
  * Returns the main plugin instance.
