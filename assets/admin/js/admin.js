@@ -796,10 +796,6 @@ const SCB = (function ($) {
                                 <span class="scb-hero-date-label">TODAY</span>
                                 <span class="scb-hero-date-val">${todayFormatted}</span>
                             </div>
-                            <button class="scb-btn scb-hero-apply-btn" id="scb-dash-refresh">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                                Refresh
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -838,7 +834,6 @@ const SCB = (function ($) {
                 </div>
             `;
 
-            document.getElementById('scb-dash-refresh').addEventListener('click', () => this.loadStats());
             await this.loadStats();
             await this.loadRecentBookings();
         },
@@ -2550,7 +2545,7 @@ const SCB = (function ($) {
                                                     <img src="${Utils.escHtml(Utils.safeUrl(c.photo_url || CONFIG.pluginUrl + 'assets/admin/img/avatar.png'))}" alt="${Utils.escHtml(c.first_name)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--scb-border);">
                                                     <div>
                                                         <strong>${Utils.escHtml(c.first_name)} ${Utils.escHtml(c.last_name)}</strong>
-                                                        <div style="font-size:11px;color:var(--scb-text-muted);">${Utils.escHtml(c.specialties || 'All levels')}</div>
+                                                        <div style="font-size:11px;color:var(--scb-text-muted);max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Utils.escHtml(c.bio || '')}</div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -2597,7 +2592,6 @@ const SCB = (function ($) {
                                             </div>
                                         </div>
                                         <p style="font-size:13px;color:var(--scb-text);line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${Utils.escHtml(c.bio || 'No bio provided.')}</p>
-                                        <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:6px;"><strong>Specialties:</strong> ${Utils.escHtml(c.specialties || 'All levels')}</div>
                                         <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:3px;"><strong>Private:</strong> ${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? `${Utils.formatCurrency(c.hourly_rate)}/hr (Custom)` : `${Utils.formatCurrency(CONFIG.defaultPrivatePrice)}/hr (Default)`}</div>
                                         <div style="font-size:12px;color:var(--scb-text-muted);margin-bottom:6px;"><strong>Semi-Private:</strong> ${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? `${Utils.formatCurrency(c.semi_private_rate)}/hr (Custom)` : `${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}/hr (Default)`}</div>
                                         <div style="font-size:12px;color:var(--scb-text-muted);"><strong>Lessons:</strong> ${c.total_bookings_count || 0} completed</div>
@@ -2732,12 +2726,8 @@ const SCB = (function ($) {
                     </div>
                     <div style="font-size:12px;color:var(--scb-text-muted);margin:-8px 0 12px;">Leave blank to use club default rates (${Utils.formatCurrency(CONFIG.defaultPrivatePrice)} / ${Utils.formatCurrency(CONFIG.defaultSemiPrivatePrice)}).</div>
                     <div class="scb-form-group">
-                        <label class="scb-form-label">Specialties</label>
-                        <input type="text" class="scb-input" id="scb-c-spec" placeholder="e.g. Deceptive Drops, Footwork">
-                    </div>
-                    <div class="scb-form-group">
                         <label class="scb-form-label">Biography</label>
-                        <textarea class="scb-textarea" id="scb-c-bio" rows="3"></textarea>
+                        <textarea class="scb-textarea" id="scb-c-bio" rows="3" placeholder="Coach bio, qualifications, and coaching background"></textarea>
                     </div>
                 `,
                 footer: `
@@ -2778,7 +2768,7 @@ const SCB = (function ($) {
                         photo_url: document.getElementById('scb-c-photo')?.value,
                         hourly_rate: document.getElementById('scb-c-rate')?.value ? parseFloat(document.getElementById('scb-c-rate').value) : null,
                         semi_private_rate: document.getElementById('scb-c-semi-rate')?.value ? parseFloat(document.getElementById('scb-c-semi-rate').value) : null,
-                        specialties: document.getElementById('scb-c-spec')?.value,
+                        specialties: document.getElementById('scb-c-spec')?.value || '',
                         bio: document.getElementById('scb-c-bio')?.value,
                     });
                     Modal.close();
@@ -2848,12 +2838,8 @@ const SCB = (function ($) {
                             hint: "Click Change Image to pick photo from Media Library, or Remove Image to delete it."
                         })}
                         <div class="scb-form-group">
-                            <label class="scb-form-label">Specialties</label>
-                            <input type="text" class="scb-input" id="scb-ec-spec" value="${Utils.escHtml(c.specialties || '')}">
-                        </div>
-                        <div class="scb-form-group">
                             <label class="scb-form-label">Biography</label>
-                            <textarea class="scb-textarea" id="scb-ec-bio" rows="3">${Utils.escHtml(c.bio || '')}</textarea>
+                            <textarea class="scb-textarea" id="scb-ec-bio" rows="3" placeholder="Coach bio, qualifications, and coaching background">${Utils.escHtml(c.bio || '')}</textarea>
                         </div>
                     `,
                     footer: `
@@ -2887,7 +2873,7 @@ const SCB = (function ($) {
                             photo_url: document.getElementById('scb-ec-photo')?.value,
                             hourly_rate: document.getElementById('scb-ec-rate')?.value !== '' ? parseFloat(document.getElementById('scb-ec-rate').value) : null,
                             semi_private_rate: document.getElementById('scb-ec-semi-rate')?.value !== '' ? parseFloat(document.getElementById('scb-ec-semi-rate').value) : null,
-                            specialties: document.getElementById('scb-ec-spec')?.value,
+                            specialties: document.getElementById('scb-ec-spec')?.value || (c.specialties || ''),
                             bio: document.getElementById('scb-ec-bio')?.value,
                         });
                         Modal.close();
@@ -4805,7 +4791,13 @@ const SCB = (function ($) {
 
             // Refresh button.
             document.getElementById('scb-refresh-btn')?.addEventListener('click', () => {
-                this._loadCurrentView();
+                const btn = document.getElementById('scb-refresh-btn');
+                if (btn) btn.classList.add('scb-spinning');
+                this._loadCurrentView().then(() => {
+                    Toast.success('Data Refreshed', 'Dashboard and views updated with latest data.');
+                }).finally(() => {
+                    setTimeout(() => btn?.classList.remove('scb-spinning'), 500);
+                });
             });
         },
 

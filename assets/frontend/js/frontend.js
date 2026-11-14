@@ -508,8 +508,8 @@
                                 <div class="scb-coach-card__content">
                                     <span class="scb-coach-card__badge">Coach</span>
                                     <div class="scb-coach-card__name">${Utils.escHtml(c.first_name)} ${Utils.escHtml(c.last_name)}</div>
-                                    <div class="scb-coach-card__specialties">${Utils.escHtml(c.specialties || '')}</div>
-                                    <div class="scb-coach-card__rate" style="font-size:11px;font-weight:700;color:var(--scb-fe-navy, #0f172a);margin-top:4px;">1-on-1: $${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? parseFloat(c.hourly_rate) : CONFIG.privatePrice}/hr · Semi: $${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? parseFloat(c.semi_private_rate) : CONFIG.semiPrivatePrice}/hr</div>
+                                    ${c.bio ? `<div class="scb-coach-card__bio">${Utils.escHtml(c.bio)}</div>` : ''}
+                                    <div class="scb-coach-card__rate">1-on-1: $${(c.hourly_rate && parseFloat(c.hourly_rate) > 0) ? parseFloat(c.hourly_rate) : CONFIG.privatePrice}/hr · Semi: $${(c.semi_private_rate && parseFloat(c.semi_private_rate) > 0) ? parseFloat(c.semi_private_rate) : CONFIG.semiPrivatePrice}/hr</div>
                                 </div>
                             </div>
                         `).join('')}
