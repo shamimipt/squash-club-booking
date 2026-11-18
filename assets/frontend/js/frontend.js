@@ -120,6 +120,13 @@
                 str = 'https://' + str.slice(7);
             }
             return Utils.escHtml(str);
+        },
+        formatClinicCategory(cat) {
+            if (!cat) return 'Squash Clinic';
+            if (cat === 'junior') return 'Junior Clinic';
+            if (cat === 'adult') return 'Adult Clinic';
+            const clean = cat.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return clean.toLowerCase().includes('clinic') ? clean : clean + ' Clinic';
         }
     };
 
@@ -328,11 +335,11 @@
                     <div class="scb-fe-card">
                         <div>
                             <div class="scb-fe-card__badge-bar">
-                                <span class="scb-fe-badge scb-fe-badge--${s.category}">${s.category === 'adult' ? 'Adult Clinic' : 'Junior Clinic'}</span>
+                                <span class="scb-fe-badge scb-fe-badge--${Utils.escHtml(s.category)}">${Utils.escHtml(Utils.formatClinicCategory(s.category))}</span>
                                 <span class="scb-fe-badge scb-fe-badge--${isFull ? 'full' : 'open'}">${isFull ? 'Waitlist Open' : spotsLeft + ' spots left'}</span>
                             </div>
                             <div class="scb-fe-card__time">${s.start_time.substring(0, 5)} - ${s.end_time.substring(0, 5)}</div>
-                            <div class="scb-fe-card__title">${Utils.escHtml(s.notes || (s.category === 'adult' ? 'Adult Masterclass' : 'Junior Academy Session'))}</div>
+                            <div class="scb-fe-card__title">${Utils.escHtml(s.notes || (Utils.formatClinicCategory(s.category) + ' Session'))}</div>
                             <div class="scb-fe-card__meta">
                                 <div>Capacity: 15 players maximum</div>
                                 ${s.waitlist_count > 0 ? `<div style="color:var(--scb-fe-warning);font-weight:600;margin-top:4px;">${s.waitlist_count} on waitlist</div>` : ''}
@@ -344,7 +351,7 @@
                                 <span style="font-size:13px;color:var(--scb-fe-text-muted);">Session Fee</span>
                                 <span class="scb-fe-card__price">${Utils.formatCurrency(s.price)}</span>
                             </div>
-                            <button class="scb-fe-btn ${isFull ? 'scb-fe-btn--warning' : 'scb-fe-btn--primary'} scb-fe-btn--full scb-open-clinic-modal" data-id="${s.id}" data-price="${s.price}" data-full="${isFull ? '1' : '0'}" data-title="${s.category === 'adult' ? 'Adult Clinic' : 'Junior Clinic'} — ${s.start_time.substring(0, 5)}" style="margin-top:12px;">
+                            <button class="scb-fe-btn ${isFull ? 'scb-fe-btn--warning' : 'scb-fe-btn--primary'} scb-fe-btn--full scb-open-clinic-modal" data-id="${s.id}" data-price="${s.price}" data-full="${isFull ? '1' : '0'}" data-title="${Utils.escHtml(Utils.formatClinicCategory(s.category))} — ${s.start_time.substring(0, 5)}" style="margin-top:12px;">
                                 ${isFull ? 'Join Waitlist' : 'Book Spot'}
                             </button>
                         </div>

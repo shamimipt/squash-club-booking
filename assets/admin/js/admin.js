@@ -29,6 +29,10 @@ const SCB = (function ($) {
         defaultSemiPrivatePrice: _admin.defaultSemiPrivatePrice || 40,
         clinicPriceJunior: _admin.clinicPriceJunior || 25,
         clinicPriceAdult: _admin.clinicPriceAdult || 30,
+        clinicCategories: Array.isArray(_admin.clinicCategories) && _admin.clinicCategories.length ? _admin.clinicCategories : [
+            { key: 'junior', name: 'Junior Clinic' },
+            { key: 'adult',  name: 'Adult Clinic' }
+        ],
         dateFormat: _admin.dateFormat || 'YYYY-MM-DD',
         timeFormat: _admin.timeFormat || 'g:i A',
     };
@@ -116,6 +120,16 @@ const SCB = (function ($) {
                 str = 'https://' + str.slice(7);
             }
             return Utils.escHtml(str);
+        },
+        formatClinicCategory(cat) {
+            if (!cat) return 'Clinic';
+            const list = CONFIG.clinicCategories || [];
+            const found = list.find(c => c.key === cat);
+            if (found) return found.name;
+            if (cat === 'junior') return 'Junior Clinic';
+            if (cat === 'adult') return 'Adult Clinic';
+            const clean = cat.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return clean.toLowerCase().includes('clinic') ? clean : clean + ' Clinic';
         },
 
         /**
@@ -1472,7 +1486,7 @@ const SCB = (function ($) {
                                 <option value="">-- Choose target clinic slot --</option>
                                 ${slots.map(s => `
                                     <option value="${s.id}" ${s.status === 'full' ? 'disabled' : ''}>
-                                        ${Utils.formatDate(s.slot_date)} (${Utils.formatTime(s.start_time)} – ${Utils.formatTime(s.end_time)}) — ${s.category === 'adult' ? 'Adult' : 'Junior'} [${s.booked_count}/${s.capacity}] ${s.status === 'full' ? '(FULL)' : ''}
+                                        ${Utils.formatDate(s.slot_date)} (${Utils.formatTime(s.start_time)} – ${Utils.formatTime(s.end_time)}) — ${Utils.formatClinicCategory(s.category)} [${s.booked_count}/${s.capacity}] ${s.status === 'full' ? '(FULL)' : ''}
                                     </option>
                                 `).join('')}
                             </select>
@@ -1995,8 +2009,7 @@ const SCB = (function ($) {
                     <div class="scb-filter-group">
                         <select class="scb-select" id="scb-clinics-category" style="width:auto;">
                             <option value="">All Categories</option>
-                            <option value="junior">Junior Clinic</option>
-                            <option value="adult">Adult Clinic</option>
+                            ${(CONFIG.clinicCategories || []).map(c => `<option value="${Utils.escHtml(c.key)}">${Utils.escHtml(c.name)}</option>`).join('')}
                         </select>
                         <select class="scb-select" id="scb-clinics-status" style="width:auto;">
                             <option value="">All Statuses</option>
@@ -2083,7 +2096,7 @@ const SCB = (function ($) {
                     return `
                         <tr>
                             <td><strong>${Utils.formatDate(s.slot_date)}</strong></td>
-                            <td><span class="scb-badge scb-badge--${s.category === 'adult' ? 'accent' : 'info'}">${s.category === 'adult' ? 'Adult' : 'Junior'}</span></td>
+                            <td><span class="scb-badge scb-badge--info">${Utils.escHtml(Utils.formatClinicCategory(s.category))}</span></td>
                             <td>${Utils.escHtml(s.start_time.substring(0, 5))} - ${Utils.escHtml(s.end_time.substring(0, 5))}</td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:8px;">
@@ -2191,6 +2204,15 @@ const SCB = (function ($) {
         },
 
         openAddModal() {
+            const categories = CONFIG.clinicCategories || [
+                { key: 'junior', name: 'Junior Clinic' },
+                { key: 'adult',  name: 'Adult Clinic' }
+            ];
+
+            const categoryOptionsHtml = categories.map(c => 
+                `<option value="${Utils.escHtml(c.key)}">${Utils.escHtml(c.name)}</option>`
+            ).join('');
+
             Modal.open({
                 title: 'Add Custom Clinic Slot',
                 content: `
@@ -2210,11 +2232,26 @@ const SCB = (function ($) {
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div class="scb-form-group">
-                            <label class="scb-form-label" for="scb-new-slot-cat">Category *</label>
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <label class="scb-form-label" for="scb-new-slot-cat" style="margin-bottom:0;">Category *</label>
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary" id="scb-btn-add-cat-toggle" title="Add New Category" style="padding:2px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border-radius:6px;cursor:pointer;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    <span>Add Category</span>
+                                </button>
+                            </div>
                             <select class="scb-select" id="scb-new-slot-cat">
-                                <option value="junior">Junior Clinic</option>
-                                <option value="adult">Adult Clinic</option>
+                                ${categoryOptionsHtml}
                             </select>
+
+                            <!-- Inline quick-add category form -->
+                            <div id="scb-inline-cat-box" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;">
+                                <div style="font-size:11px;font-weight:700;color:var(--scb-text-muted);margin-bottom:6px;text-transform:uppercase;">New Category Name</div>
+                                <div style="display:flex;gap:6px;">
+                                    <input type="text" class="scb-input" id="scb-new-cat-input" placeholder="e.g. Senior Clinic, Women's Clinic" style="font-size:13px;padding:6px 10px;">
+                                    <button type="button" class="scb-btn scb-btn--sm scb-btn--primary" id="scb-save-new-cat-btn" style="padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;">Save</button>
+                                    <button type="button" class="scb-btn scb-btn--sm scb-btn--secondary" id="scb-cancel-new-cat-btn" style="padding:6px 8px;font-size:12px;">✕</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="scb-form-group">
                             <label class="scb-form-label" for="scb-new-slot-cap">Capacity *</label>
@@ -2223,7 +2260,7 @@ const SCB = (function ($) {
                     </div>
                     <div class="scb-form-group">
                         <label class="scb-form-label" for="scb-new-slot-price">Price ($)</label>
-                        <input type="number" step="0.5" class="scb-input" id="scb-new-slot-price" value="${CONFIG.clinicPriceJunior || 20.00}">
+                        <input type="number" step="0.5" class="scb-input" id="scb-new-slot-price" value="${CONFIG.clinicPriceJunior || 25.00}">
                     </div>
                 `,
                 footer: `
@@ -2232,12 +2269,99 @@ const SCB = (function ($) {
                 `
             });
 
+            const toggleCatBtn = document.getElementById('scb-btn-add-cat-toggle');
+            const inlineCatBox = document.getElementById('scb-inline-cat-box');
+            const newCatInput = document.getElementById('scb-new-cat-input');
+            const saveCatBtn = document.getElementById('scb-save-new-cat-btn');
+            const cancelCatBtn = document.getElementById('scb-cancel-new-cat-btn');
             const slotCatSelect = document.getElementById('scb-new-slot-cat');
+
+            if (toggleCatBtn && inlineCatBox) {
+                toggleCatBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isVisible = inlineCatBox.style.display !== 'none';
+                    inlineCatBox.style.display = isVisible ? 'none' : 'block';
+                    if (!isVisible && newCatInput) {
+                        newCatInput.focus();
+                    }
+                });
+            }
+
+            if (cancelCatBtn && inlineCatBox) {
+                cancelCatBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    inlineCatBox.style.display = 'none';
+                    if (newCatInput) newCatInput.value = '';
+                });
+            }
+
+            if (saveCatBtn && newCatInput && slotCatSelect) {
+                saveCatBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const rawName = (newCatInput.value || '').trim();
+                    if (!rawName) {
+                        Toast.error('Category Name Required', 'Please enter a name for the new category.');
+                        newCatInput.focus();
+                        return;
+                    }
+
+                    // Generate clean key/slug
+                    let key = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                    if (!key) key = 'clinic-' + Date.now();
+
+                    const formattedName = rawName;
+
+                    // Check if already exists
+                    let categoriesList = CONFIG.clinicCategories || [];
+                    const exists = categoriesList.find(c => c.key === key || c.name.toLowerCase() === rawName.toLowerCase());
+
+                    if (exists) {
+                        slotCatSelect.value = exists.key;
+                        inlineCatBox.style.display = 'none';
+                        newCatInput.value = '';
+                        Toast.info('Category Selected', `"${exists.name}" is already available and has been selected.`);
+                        return;
+                    }
+
+                    // Add new category
+                    const newCatObj = { key: key, name: formattedName };
+                    categoriesList.push(newCatObj);
+                    CONFIG.clinicCategories = categoriesList;
+
+                    // Add option to modal dropdown and select it
+                    const opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = formattedName;
+                    opt.selected = true;
+                    slotCatSelect.appendChild(opt);
+
+                    // Also add to the toolbar filter dropdown if present
+                    const filterCatSelect = document.getElementById('scb-clinics-category');
+                    if (filterCatSelect) {
+                        const filterOpt = document.createElement('option');
+                        filterOpt.value = key;
+                        filterOpt.textContent = formattedName;
+                        filterCatSelect.appendChild(filterOpt);
+                    }
+
+                    // Hide inline box and clear input
+                    inlineCatBox.style.display = 'none';
+                    newCatInput.value = '';
+
+                    Toast.success('Category Added', `Category "${formattedName}" added and selected.`);
+
+                    // Persist to backend settings in background
+                    Api.post('settings', { clinic_categories: categoriesList }).catch(err => {
+                        console.warn('Could not persist category to settings:', err);
+                    });
+                });
+            }
+
             if (slotCatSelect) {
                 slotCatSelect.addEventListener('change', () => {
                     const priceInput = document.getElementById('scb-new-slot-price');
                     if (priceInput) {
-                        priceInput.value = slotCatSelect.value === 'adult' ? (CONFIG.clinicPriceAdult || 25.00) : (CONFIG.clinicPriceJunior || 20.00);
+                        priceInput.value = slotCatSelect.value === 'adult' ? (CONFIG.clinicPriceAdult || 30.00) : (CONFIG.clinicPriceJunior || 25.00);
                     }
                 });
             }
@@ -3015,7 +3139,7 @@ const SCB = (function ($) {
                                         <span>${s.start_time.substring(0, 5)} - ${s.end_time.substring(0, 5)}</span>
                                     </div>
                                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;">
-                                        <span class="scb-badge scb-badge--info">${s.category === 'adult' ? 'Adult Clinic' : 'Junior Clinic'}</span>
+                                        <span class="scb-badge scb-badge--info">${Utils.escHtml(Utils.formatClinicCategory(s.category))}</span>
                                         <span style="color:var(--scb-text-muted);">${s.booked_count} / ${s.capacity} spots</span>
                                     </div>
                                 </div>

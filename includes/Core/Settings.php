@@ -51,6 +51,10 @@ class Settings {
             'clinic_booking_close_hours'   => 2,   // Hours before slot booking closes.
             'clinic_price_junior'          => 25.00,
             'clinic_price_adult'           => 30.00,
+            'clinic_categories'            => [
+                [ 'key' => 'junior', 'name' => 'Junior Clinic' ],
+                [ 'key' => 'adult',  'name' => 'Adult Clinic' ],
+            ],
             'clinic_auto_generate'         => false,
             'clinic_slots'                 => [
                 [ 'time' => '09:00', 'duration' => 60, 'category' => 'junior' ],
@@ -201,6 +205,40 @@ class Settings {
         unset( $sc );
 
         return $shortcodes;
+    }
+
+    /**
+     * Get all registered clinic categories (with fallback to defaults and DB values).
+     *
+     * @return array
+     */
+    public static function get_clinic_categories(): array {
+        $defaults = [
+            [ 'key' => 'junior', 'name' => 'Junior Clinic' ],
+            [ 'key' => 'adult',  'name' => 'Adult Clinic' ],
+        ];
+
+        $categories = self::get( 'clinic_categories', $defaults );
+        if ( ! is_array( $categories ) || empty( $categories ) ) {
+            $categories = $defaults;
+        }
+
+        // Auto-merge any distinct categories from the clinic slots table so existing data is never omitted.
+        global $wpdb;
+        $db_cats = $wpdb->get_col( "SELECT DISTINCT category FROM {$wpdb->prefix}scb_clinic_slots WHERE category != ''" );
+        if ( ! empty( $db_cats ) ) {
+            $existing_keys = array_column( $categories, 'key' );
+            foreach ( $db_cats as $cat ) {
+                if ( ! in_array( $cat, $existing_keys, true ) ) {
+                    $categories[] = [
+                        'key'  => $cat,
+                        'name' => ucwords( str_replace( [ '-', '_' ], ' ', $cat ) ) . ( stripos( $cat, 'clinic' ) === false ? ' Clinic' : '' ),
+                    ];
+                }
+            }
+        }
+
+        return $categories;
     }
 
     /** @var bool Whether autoloaded settings have been populated */

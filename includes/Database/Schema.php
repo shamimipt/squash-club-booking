@@ -114,7 +114,7 @@ class Schema {
                 slot_date       DATE                NOT NULL,
                 start_time      TIME                NOT NULL,
                 end_time        TIME                NOT NULL,
-                category        ENUM('junior','adult') NOT NULL DEFAULT 'junior',
+                category        VARCHAR(50)         NOT NULL DEFAULT 'junior',
                 capacity        SMALLINT            NOT NULL DEFAULT 15,
                 booked_count    SMALLINT            NOT NULL DEFAULT 0,
                 waitlist_count  SMALLINT            NOT NULL DEFAULT 0,
