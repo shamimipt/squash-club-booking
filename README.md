@@ -22,7 +22,7 @@
 
 ## 1. Overview
 
-**Squash Club Booking** is a custom WordPress plugin developed specifically for squash clubs and racquets sports centers. It replaces fragmented forms and generic appointment plugins with an integrated, high-performance booking and sports club management platform.
+**Squash Club Booking** is a custom WordPress plugin developed specifically for squash clubs and racquets sports centers. It replaces fragmented forms and generic appointment plugins with an integrated, high-performance booking and sports club management platform.adf
 
 ### Core Objectives:
 - **Zero Placeholders**: 100% database-driven backend with atomic updates and transactional consistency.
