@@ -648,8 +648,8 @@ class BookingController
             \SquashClubBooking\Modules\Payments\PaymentModule::sync_clinic_slot_count((int) $b->clinic_slot_id);
         }
 
-        // Two-way sync with linked WooCommerce order.
-        \SquashClubBooking\Modules\Payments\PaymentModule::sync_wc_order_from_booking($id, 'failed', 'rejected');
+        // Two-way sync with linked WooCommerce order (retains existing payment status).
+        \SquashClubBooking\Modules\Payments\PaymentModule::sync_wc_order_from_booking($id, $b->payment_status, 'rejected');
 
         NotificationModule::send_status_update($b, 'rejected', $reason);
         AuditLog::log('booking_rejected', 'booking', $id, ['booking_status' => $b->booking_status], ['booking_status' => 'rejected', 'reason' => $reason]);
@@ -692,13 +692,76 @@ class BookingController
             \SquashClubBooking\Modules\Payments\PaymentModule::sync_clinic_slot_count((int) $b->clinic_slot_id);
         }
 
-        // Two-way sync with linked WooCommerce order.
-        \SquashClubBooking\Modules\Payments\PaymentModule::sync_wc_order_from_booking($id, 'failed', 'cancelled');
+        // Two-way sync with linked WooCommerce order (retains existing payment status so 'paid' remains paid).
+        \SquashClubBooking\Modules\Payments\PaymentModule::sync_wc_order_from_booking($id, $b->payment_status, 'cancelled');
 
         NotificationModule::send_status_update($b, 'cancelled', $reason);
         AuditLog::log('booking_cancelled', 'booking', $id, ['booking_status' => $b->booking_status], ['booking_status' => 'cancelled', 'reason' => $reason]);
 
         return rest_ensure_response(['success' => true, 'message' => __('Booking cancelled.', 'squash-club-booking')]);
+    }
+
+    /**
+     * Mark booking payment as refunded.
+     *
+     * @param \WP_REST_Request $r
+     * @return \WP_REST_Response
+     */
+    public static function refund(\WP_REST_Request $r): \WP_REST_Response
+    {
+        global $wpdb;
+
+        $id     = absint($r->get_param('id'));
+        $reason = sanitize_textarea_field($r->get_param('reason') ?? '');
+        $b      = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $id));
+
+        if (! $b) {
+            return new \WP_REST_Response(['success' => false, 'message' => __('Booking not found.', 'squash-club-booking')], 404);
+        }
+
+        $fields = [
+            'payment_status' => 'refunded',
+            'updated_at'     => current_time('mysql'),
+        ];
+        $formats = ['%s', '%s'];
+
+        if ($b->booking_status !== 'cancelled' && $b->booking_status !== 'rejected') {
+            $fields['booking_status']      = 'cancelled';
+            $fields['cancellation_reason'] = ! empty($reason) ? $reason : __('Payment refunded.', 'squash-club-booking');
+            $formats[] = '%s';
+            $formats[] = '%s';
+        }
+
+        $wpdb->update(
+            $wpdb->prefix . 'scb_bookings',
+            $fields,
+            ['id' => $id],
+            $formats,
+            ['%d']
+        );
+
+        // Release capacity if clinic slot.
+        if (! empty($b->clinic_slot_id)) {
+            \SquashClubBooking\Modules\Payments\PaymentModule::sync_clinic_slot_count((int) $b->clinic_slot_id);
+        }
+
+        // Two-way sync with linked WooCommerce order.
+        \SquashClubBooking\Modules\Payments\PaymentModule::sync_wc_order_from_booking(
+            $id,
+            'refunded',
+            $fields['booking_status'] ?? $b->booking_status
+        );
+
+        NotificationModule::send_status_update($b, 'refunded', ! empty($reason) ? $reason : __('Your payment has been refunded.', 'squash-club-booking'));
+        AuditLog::log(
+            'payment_refunded',
+            'booking',
+            $id,
+            ['payment_status' => $b->payment_status, 'booking_status' => $b->booking_status],
+            ['payment_status' => 'refunded', 'booking_status' => $fields['booking_status'] ?? $b->booking_status]
+        );
+
+        return rest_ensure_response(['success' => true, 'message' => __('Payment marked as refunded.', 'squash-club-booking')]);
     }
 
     /**

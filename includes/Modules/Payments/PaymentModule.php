@@ -136,6 +136,9 @@ class PaymentModule {
      * @param int $order_id
      */
     public function on_order_paid( int $order_id ): void {
+        if ( ! empty( self::$syncing_from_scb[ $order_id ] ) ) {
+            return;
+        }
         global $wpdb;
 
         $order = wc_get_order( $order_id );
@@ -258,6 +261,9 @@ class PaymentModule {
      * @param int $order_id
      */
     public function on_order_pending( int $order_id ): void {
+        if ( ! empty( self::$syncing_from_scb[ $order_id ] ) ) {
+            return;
+        }
         global $wpdb;
         $order = wc_get_order( $order_id );
         if ( ! $order ) return;
@@ -312,10 +318,14 @@ class PaymentModule {
     /**
      * Handle cancelled order.
      * Cancels booking and releases any clinic slot capacity.
+     * Retains 'paid' status if money was already collected.
      *
      * @param int $order_id
      */
     public function on_order_cancelled( int $order_id ): void {
+        if ( ! empty( self::$syncing_from_scb[ $order_id ] ) ) {
+            return;
+        }
         global $wpdb;
         $order = wc_get_order( $order_id );
         if ( ! $order ) return;
@@ -326,11 +336,15 @@ class PaymentModule {
         if ( $booking_id ) {
             $booking = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id ) );
 
+            // If payment was already completed ('paid'), keep it as 'paid' because the club still holds the funds.
+            // It will only change to 'refunded' if explicitly refunded.
+            $new_payment_status = ( $booking && $booking->payment_status === 'paid' ) ? 'paid' : 'failed';
+
             $wpdb->update(
                 $wpdb->prefix . 'scb_bookings',
                 [
                     'booking_status'      => 'cancelled',
-                    'payment_status'      => 'failed',
+                    'payment_status'      => $new_payment_status,
                     'cancellation_reason' => __( 'WooCommerce order cancelled.', 'squash-club-booking' ),
                     'updated_at'          => current_time( 'mysql' ),
                 ],
@@ -345,11 +359,14 @@ class PaymentModule {
         }
 
         if ( $camp_reg_id ) {
+            $reg = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_camp_registrations WHERE id = %d", $camp_reg_id ) );
+            $new_reg_payment = ( $reg && $reg->payment_status === 'paid' ) ? 'paid' : 'failed';
+
             $wpdb->update(
                 $wpdb->prefix . 'scb_camp_registrations',
                 [
                     'registration_status' => 'cancelled',
-                    'payment_status'      => 'failed',
+                    'payment_status'      => $new_reg_payment,
                     'updated_at'          => current_time( 'mysql' ),
                 ],
                 [ 'id' => $camp_reg_id ],
@@ -358,9 +375,11 @@ class PaymentModule {
             );
         }
 
+        $payment_status_for_table = ( ( isset( $booking ) && $booking && $booking->payment_status === 'paid' ) || ( isset( $reg ) && $reg && $reg->payment_status === 'paid' ) ) ? 'paid' : 'cancelled';
+
         $wpdb->update(
             $wpdb->prefix . 'scb_payments',
-            [ 'payment_status' => 'cancelled', 'updated_at' => current_time( 'mysql' ) ],
+            [ 'payment_status' => $payment_status_for_table, 'updated_at' => current_time( 'mysql' ) ],
             [ 'wc_order_id' => $order_id ],
             [ '%s', '%s' ],
             [ '%d' ]
@@ -374,6 +393,9 @@ class PaymentModule {
      * @param int $order_id
      */
     public function on_order_refunded( int $order_id ): void {
+        if ( ! empty( self::$syncing_from_scb[ $order_id ] ) ) {
+            return;
+        }
         global $wpdb;
         $order = wc_get_order( $order_id );
         if ( ! $order ) return;
@@ -432,6 +454,9 @@ class PaymentModule {
      * @param int $order_id
      */
     public function on_order_failed( int $order_id ): void {
+        if ( ! empty( self::$syncing_from_scb[ $order_id ] ) ) {
+            return;
+        }
         global $wpdb;
         $order = wc_get_order( $order_id );
         if ( ! $order ) return;
@@ -442,11 +467,13 @@ class PaymentModule {
         if ( $booking_id ) {
             $booking = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id ) );
 
+            $new_payment_status = ( $booking && $booking->payment_status === 'paid' ) ? 'paid' : 'failed';
+
             $wpdb->update(
                 $wpdb->prefix . 'scb_bookings',
                 [
                     'booking_status'      => 'cancelled',
-                    'payment_status'      => 'failed',
+                    'payment_status'      => $new_payment_status,
                     'cancellation_reason' => __( 'WooCommerce payment failed.', 'squash-club-booking' ),
                     'updated_at'          => current_time( 'mysql' ),
                 ],
@@ -461,11 +488,14 @@ class PaymentModule {
         }
 
         if ( $camp_reg_id ) {
+            $reg = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_camp_registrations WHERE id = %d", $camp_reg_id ) );
+            $new_reg_payment = ( $reg && $reg->payment_status === 'paid' ) ? 'paid' : 'failed';
+
             $wpdb->update(
                 $wpdb->prefix . 'scb_camp_registrations',
                 [
                     'registration_status' => 'cancelled',
-                    'payment_status'      => 'failed',
+                    'payment_status'      => $new_reg_payment,
                     'updated_at'          => current_time( 'mysql' ),
                 ],
                 [ 'id' => $camp_reg_id ],
@@ -474,9 +504,11 @@ class PaymentModule {
             );
         }
 
+        $payment_status_for_table = ( ( isset( $booking ) && $booking && $booking->payment_status === 'paid' ) || ( isset( $reg ) && $reg && $reg->payment_status === 'paid' ) ) ? 'paid' : 'failed';
+
         $wpdb->update(
             $wpdb->prefix . 'scb_payments',
-            [ 'payment_status' => 'failed', 'updated_at' => current_time( 'mysql' ) ],
+            [ 'payment_status' => $payment_status_for_table, 'updated_at' => current_time( 'mysql' ) ],
             [ 'wc_order_id' => $order_id ],
             [ '%s', '%s' ],
             [ '%d' ]
@@ -625,12 +657,12 @@ class PaymentModule {
         }
 
         $target_status = null;
-        if ( $booking_status === 'cancelled' || $booking_status === 'rejected' ) {
+        if ( $payment_status === 'refunded' ) {
+            $target_status = 'refunded';
+        } elseif ( $booking_status === 'cancelled' || $booking_status === 'rejected' ) {
             $target_status = 'cancelled';
         } elseif ( $payment_status === 'paid' ) {
             $target_status = 'completed';
-        } elseif ( $payment_status === 'refunded' ) {
-            $target_status = 'refunded';
         } elseif ( $payment_status === 'failed' ) {
             $target_status = 'failed';
         } elseif ( $payment_status === 'pending' || $payment_status === 'unpaid' ) {
@@ -679,12 +711,12 @@ class PaymentModule {
         }
 
         $target_status = null;
-        if ( $registration_status === 'cancelled' ) {
+        if ( $payment_status === 'refunded' ) {
+            $target_status = 'refunded';
+        } elseif ( $registration_status === 'cancelled' ) {
             $target_status = 'cancelled';
         } elseif ( $payment_status === 'paid' ) {
             $target_status = 'completed';
-        } elseif ( $payment_status === 'refunded' ) {
-            $target_status = 'refunded';
         } elseif ( $payment_status === 'failed' ) {
             $target_status = 'failed';
         } elseif ( $payment_status === 'pending' || $payment_status === 'unpaid' ) {
