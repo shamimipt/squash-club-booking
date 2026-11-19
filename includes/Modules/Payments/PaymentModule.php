@@ -333,12 +333,13 @@ class PaymentModule {
         $booking_id  = $order->get_meta( '_scb_booking_id' );
         $camp_reg_id = $order->get_meta( '_scb_camp_registration_id' );
 
+        $order_paid = $order && ! empty( $order->get_date_paid() );
+
         if ( $booking_id ) {
             $booking = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id ) );
 
-            // If payment was already completed ('paid'), keep it as 'paid' because the club still holds the funds.
-            // It will only change to 'refunded' if explicitly refunded.
-            $new_payment_status = ( $booking && $booking->payment_status === 'paid' ) ? 'paid' : 'failed';
+            $is_paid = ( $booking && $booking->payment_status === 'paid' ) || $order_paid;
+            $new_payment_status = $is_paid ? 'paid' : 'failed';
 
             $wpdb->update(
                 $wpdb->prefix . 'scb_bookings',
@@ -360,7 +361,8 @@ class PaymentModule {
 
         if ( $camp_reg_id ) {
             $reg = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_camp_registrations WHERE id = %d", $camp_reg_id ) );
-            $new_reg_payment = ( $reg && $reg->payment_status === 'paid' ) ? 'paid' : 'failed';
+            $is_reg_paid = ( $reg && $reg->payment_status === 'paid' ) || $order_paid;
+            $new_reg_payment = $is_reg_paid ? 'paid' : 'failed';
 
             $wpdb->update(
                 $wpdb->prefix . 'scb_camp_registrations',
@@ -375,7 +377,7 @@ class PaymentModule {
             );
         }
 
-        $payment_status_for_table = ( ( isset( $booking ) && $booking && $booking->payment_status === 'paid' ) || ( isset( $reg ) && $reg && $reg->payment_status === 'paid' ) ) ? 'paid' : 'cancelled';
+        $payment_status_for_table = ( ( isset( $is_paid ) && $is_paid ) || ( isset( $is_reg_paid ) && $is_reg_paid ) || $order_paid ) ? 'paid' : 'cancelled';
 
         $wpdb->update(
             $wpdb->prefix . 'scb_payments',
@@ -464,10 +466,13 @@ class PaymentModule {
         $booking_id  = $order->get_meta( '_scb_booking_id' );
         $camp_reg_id = $order->get_meta( '_scb_camp_registration_id' );
 
+        $order_paid = $order && ! empty( $order->get_date_paid() );
+
         if ( $booking_id ) {
             $booking = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_bookings WHERE id = %d", $booking_id ) );
 
-            $new_payment_status = ( $booking && $booking->payment_status === 'paid' ) ? 'paid' : 'failed';
+            $is_paid = ( $booking && $booking->payment_status === 'paid' ) || $order_paid;
+            $new_payment_status = $is_paid ? 'paid' : 'failed';
 
             $wpdb->update(
                 $wpdb->prefix . 'scb_bookings',
@@ -489,7 +494,8 @@ class PaymentModule {
 
         if ( $camp_reg_id ) {
             $reg = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}scb_camp_registrations WHERE id = %d", $camp_reg_id ) );
-            $new_reg_payment = ( $reg && $reg->payment_status === 'paid' ) ? 'paid' : 'failed';
+            $is_reg_paid = ( $reg && $reg->payment_status === 'paid' ) || $order_paid;
+            $new_reg_payment = $is_reg_paid ? 'paid' : 'failed';
 
             $wpdb->update(
                 $wpdb->prefix . 'scb_camp_registrations',
@@ -504,7 +510,7 @@ class PaymentModule {
             );
         }
 
-        $payment_status_for_table = ( ( isset( $booking ) && $booking && $booking->payment_status === 'paid' ) || ( isset( $reg ) && $reg && $reg->payment_status === 'paid' ) ) ? 'paid' : 'failed';
+        $payment_status_for_table = ( ( isset( $is_paid ) && $is_paid ) || ( isset( $is_reg_paid ) && $is_reg_paid ) || $order_paid ) ? 'paid' : 'failed';
 
         $wpdb->update(
             $wpdb->prefix . 'scb_payments',
@@ -758,14 +764,23 @@ class PaymentModule {
         foreach ( $bookings as $b ) {
             $order = wc_get_order( (int) $b->wc_order_id );
             if ( $order ) {
-                $wc_status = $order->get_status();
-                $expected_p_status = match ( $wc_status ) {
-                    'completed', 'processing' => 'paid',
-                    'pending', 'on-hold'     => 'pending',
-                    'refunded'                => 'refunded',
-                    'cancelled', 'failed', 'trash' => 'failed',
-                    default                   => $b->payment_status,
-                };
+                $wc_status   = $order->get_status();
+                $is_refunded = ( $wc_status === 'refunded' ) || ( method_exists( $order, 'get_total_refunded' ) && (float) $order->get_total_refunded() > 0 );
+                $is_paid     = ( ! empty( $order->get_date_paid() ) ) || ( $b->payment_status === 'paid' );
+
+                if ( $is_refunded ) {
+                    $expected_p_status = 'refunded';
+                } elseif ( $is_paid ) {
+                    $expected_p_status = 'paid';
+                } else {
+                    $expected_p_status = match ( $wc_status ) {
+                        'completed', 'processing' => 'paid',
+                        'pending', 'on-hold'     => 'pending',
+                        'cancelled'               => 'unpaid',
+                        'failed', 'trash'         => 'failed',
+                        default                   => $b->payment_status,
+                    };
+                }
 
                 $expected_b_status = match ( $wc_status ) {
                     'completed', 'processing' => ( $b->booking_status === 'pending' ? 'approved' : $b->booking_status ),
@@ -826,14 +841,23 @@ class PaymentModule {
         foreach ( $camps as $c ) {
             $order = wc_get_order( (int) $c->wc_order_id );
             if ( $order ) {
-                $wc_status = $order->get_status();
-                $expected_p_status = match ( $wc_status ) {
-                    'completed', 'processing' => 'paid',
-                    'pending', 'on-hold'     => 'pending',
-                    'refunded'                => 'refunded',
-                    'cancelled', 'failed', 'trash' => 'failed',
-                    default                   => $c->payment_status,
-                };
+                $wc_status   = $order->get_status();
+                $is_refunded = ( $wc_status === 'refunded' ) || ( method_exists( $order, 'get_total_refunded' ) && (float) $order->get_total_refunded() > 0 );
+                $is_paid     = ( ! empty( $order->get_date_paid() ) ) || ( $c->payment_status === 'paid' );
+
+                if ( $is_refunded ) {
+                    $expected_p_status = 'refunded';
+                } elseif ( $is_paid ) {
+                    $expected_p_status = 'paid';
+                } else {
+                    $expected_p_status = match ( $wc_status ) {
+                        'completed', 'processing' => 'paid',
+                        'pending', 'on-hold'     => 'pending',
+                        'cancelled'               => 'unpaid',
+                        'failed', 'trash'         => 'failed',
+                        default                   => $c->payment_status,
+                    };
+                }
 
                 $expected_r_status = match ( $wc_status ) {
                     'completed', 'processing' => ( $c->registration_status === 'pending' ? 'confirmed' : $c->registration_status ),
@@ -867,15 +891,23 @@ class PaymentModule {
             if ( $p->wc_order_id ) {
                 $order = wc_get_order( (int) $p->wc_order_id );
                 if ( $order ) {
-                    $wc_status = $order->get_status();
-                    $expected_status = match ( $wc_status ) {
-                        'completed', 'processing' => 'paid',
-                        'pending', 'on-hold'     => 'pending',
-                        'refunded'                => 'refunded',
-                        'cancelled'               => 'cancelled',
-                        'failed', 'trash'         => 'failed',
-                        default                   => $expected_status ?: 'pending',
-                    };
+                    $wc_status   = $order->get_status();
+                    $is_refunded = ( $wc_status === 'refunded' ) || ( method_exists( $order, 'get_total_refunded' ) && (float) $order->get_total_refunded() > 0 );
+                    $is_paid     = ( ! empty( $order->get_date_paid() ) ) || ( $expected_status === 'paid' );
+
+                    if ( $is_refunded ) {
+                        $expected_status = 'refunded';
+                    } elseif ( $is_paid ) {
+                        $expected_status = 'paid';
+                    } else {
+                        $expected_status = match ( $wc_status ) {
+                            'completed', 'processing' => 'paid',
+                            'pending', 'on-hold'     => 'pending',
+                            'cancelled'               => 'cancelled',
+                            'failed', 'trash'         => 'failed',
+                            default                   => $expected_status ?: 'pending',
+                        };
+                    }
                 }
             }
 
