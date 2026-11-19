@@ -101,6 +101,33 @@ class SettingsController {
         foreach ( $params as $key => $value ) {
             $sanitized_key = sanitize_key( $key );
 
+            if ( $sanitized_key === 'clinic_categories' && is_array( $value ) ) {
+                $clean_cats = [];
+                foreach ( $value as $cat_item ) {
+                    if ( is_array( $cat_item ) && ! empty( $cat_item['key'] ) ) {
+                        $clean_cats[] = [
+                            'key'  => sanitize_key( $cat_item['key'] ),
+                            'name' => sanitize_text_field( $cat_item['name'] ?? $cat_item['key'] ),
+                        ];
+                    }
+                }
+
+                Settings::set( 'clinic_categories', $clean_cats );
+
+                // Reassign any slots whose category was deleted to the first remaining category.
+                $valid_keys = array_column( $clean_cats, 'key' );
+                if ( ! empty( $valid_keys ) ) {
+                    global $wpdb;
+                    $fallback = $valid_keys[0];
+                    $escaped_keys = "'" . implode( "','", array_map( 'esc_sql', $valid_keys ) ) . "'";
+                    $wpdb->query( $wpdb->prepare(
+                        "UPDATE {$wpdb->prefix}scb_clinic_slots SET category = %s WHERE category NOT IN ($escaped_keys)",
+                        $fallback
+                    ) );
+                }
+                continue;
+            }
+
             if ( is_bool( $value ) ) {
                 Settings::set( $sanitized_key, (bool) $value );
             } elseif ( is_numeric( $value ) ) {

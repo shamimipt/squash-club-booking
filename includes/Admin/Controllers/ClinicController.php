@@ -225,6 +225,11 @@ class ClinicController {
             $formats[] = '%s';
         }
 
+        if ( isset( $params['category'] ) && ! empty( $params['category'] ) ) {
+            $fields['category'] = sanitize_key( $params['category'] );
+            $formats[] = '%s';
+        }
+
         if ( isset( $params['price'] ) ) {
             $fields['price'] = floatval( $params['price'] );
             $formats[] = '%f';

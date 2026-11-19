@@ -218,27 +218,12 @@ class Settings {
             [ 'key' => 'adult',  'name' => 'Adult Clinic' ],
         ];
 
-        $categories = self::get( 'clinic_categories', $defaults );
+        $categories = self::get( 'clinic_categories', null );
         if ( ! is_array( $categories ) || empty( $categories ) ) {
-            $categories = $defaults;
+            return $defaults;
         }
 
-        // Auto-merge any distinct categories from the clinic slots table so existing data is never omitted.
-        global $wpdb;
-        $db_cats = $wpdb->get_col( "SELECT DISTINCT category FROM {$wpdb->prefix}scb_clinic_slots WHERE category != ''" );
-        if ( ! empty( $db_cats ) ) {
-            $existing_keys = array_column( $categories, 'key' );
-            foreach ( $db_cats as $cat ) {
-                if ( ! in_array( $cat, $existing_keys, true ) ) {
-                    $categories[] = [
-                        'key'  => $cat,
-                        'name' => ucwords( str_replace( [ '-', '_' ], ' ', $cat ) ) . ( stripos( $cat, 'clinic' ) === false ? ' Clinic' : '' ),
-                    ];
-                }
-            }
-        }
-
-        return $categories;
+        return array_values( $categories );
     }
 
     /** @var bool Whether autoloaded settings have been populated */

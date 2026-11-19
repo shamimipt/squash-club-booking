@@ -1998,6 +1998,10 @@ const SCB = (function ($) {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                             Generate Weekly Slots
                         </button>
+                        <button class="scb-btn scb-btn--secondary" id="scb-clinics-manage-cats-btn" title="Manage clinic categories">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+                            Manage Categories
+                        </button>
                         <button class="scb-btn scb-btn--secondary" id="scb-clinics-add-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                             Add Clinic Slot
@@ -2039,6 +2043,7 @@ const SCB = (function ($) {
                 BookingsView.openManualBookingModal('clinic', null, () => this.loadSlots());
             });
             document.getElementById('scb-clinics-generate-btn').addEventListener('click', () => this.openGenerateModal());
+            document.getElementById('scb-clinics-manage-cats-btn')?.addEventListener('click', () => this.openManageCategoriesModal());
             document.getElementById('scb-clinics-add-btn').addEventListener('click', () => this.openAddModal());
             document.getElementById('scb-clinics-category').addEventListener('change', (e) => { this.state.category = e.target.value; this.loadSlots(); });
             document.getElementById('scb-clinics-status').addEventListener('change', (e) => { this.state.status = e.target.value; this.loadSlots(); });
@@ -2112,7 +2117,7 @@ const SCB = (function ($) {
                             <td>
                                 <div style="display:flex;gap:4px;">
                                     <button class="scb-btn scb-btn--sm scb-btn--primary scb-book-slot-btn" data-id="${s.id}" data-date="${s.slot_date}">Book Client</button>
-                                    <button class="scb-btn scb-btn--sm scb-btn--secondary scb-edit-slot-btn" data-id="${s.id}" data-cap="${cap}" data-price="${s.price}" data-status="${s.status}" data-notes="${Utils.escHtml(s.notes || '')}">Edit</button>
+                                    <button class="scb-btn scb-btn--sm scb-btn--secondary scb-edit-slot-btn" data-id="${s.id}" data-cap="${cap}" data-price="${s.price}" data-status="${s.status}" data-cat="${Utils.escHtml(s.category || 'junior')}" data-notes="${Utils.escHtml(s.notes || '')}">Edit</button>
                                     <button class="scb-btn scb-btn--sm scb-btn--danger scb-delete-slot-btn" data-id="${s.id}" data-date="${s.slot_date}">Delete</button>
                                 </div>
                             </td>
@@ -2129,7 +2134,7 @@ const SCB = (function ($) {
 
                 tbody.querySelectorAll('.scb-edit-slot-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        this.openEditModal(btn.dataset.id, btn.dataset.cap, btn.dataset.price, btn.dataset.status, btn.dataset.notes);
+                        this.openEditModal(btn.dataset.id, btn.dataset.cap, btn.dataset.price, btn.dataset.status, btn.dataset.notes, btn.dataset.cat);
                     });
                 });
 
@@ -2203,6 +2208,219 @@ const SCB = (function ($) {
             });
         },
 
+        _syncCategoryDropdowns(selectedKey) {
+            const categories = CONFIG.clinicCategories || [];
+            // Update slot modal dropdown if currently in DOM
+            const slotCatSelect = document.getElementById('scb-new-slot-cat');
+            if (slotCatSelect) {
+                const prev = selectedKey || slotCatSelect.value;
+                slotCatSelect.innerHTML = categories.map(c => 
+                    `<option value="${Utils.escHtml(c.key)}" ${c.key === prev ? 'selected' : ''}>${Utils.escHtml(c.name)}</option>`
+                ).join('');
+                if (!slotCatSelect.value && categories.length) {
+                    slotCatSelect.value = categories[0].key;
+                }
+            }
+
+            // Update main toolbar filter dropdown
+            const filterCatSelect = document.getElementById('scb-clinics-category');
+            if (filterCatSelect) {
+                const prevFilter = filterCatSelect.value;
+                filterCatSelect.innerHTML = `
+                    <option value="">All Categories</option>
+                    ${categories.map(c => `<option value="${Utils.escHtml(c.key)}" ${c.key === prevFilter ? 'selected' : ''}>${Utils.escHtml(c.name)}</option>`).join('')}
+                `;
+            }
+        },
+
+        openManageCategoriesModal() {
+            const renderCategories = () => {
+                const listEl = document.getElementById('scb-manage-cats-list');
+                if (!listEl) return;
+                const categories = CONFIG.clinicCategories || [];
+                if (!categories.length) {
+                    listEl.innerHTML = '<p style="color:var(--scb-text-muted);font-size:13px;padding:8px 0;">No categories found.</p>';
+                    return;
+                }
+                listEl.innerHTML = categories.map(cat => `
+                    <div class="scb-cat-row" data-key="${Utils.escHtml(cat.key)}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;gap:8px;">
+                        <div class="scb-cat-view" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--scb-primary);"></span>
+                                <span class="scb-cat-name-text" style="font-weight:600;font-size:14px;color:#0f172a;">${Utils.escHtml(cat.name)}</span>
+                                <code style="font-size:11px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;">${Utils.escHtml(cat.key)}</code>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary scb-cat-rename-trigger" style="padding:4px 8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    Rename
+                                </button>
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--danger scb-cat-del-trigger" style="padding:4px 8px;font-size:12px;color:#dc2626;border-color:#fecaca;display:inline-flex;align-items:center;gap:4px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                        <div class="scb-cat-edit" style="display:none;align-items:center;gap:8px;width:100%;">
+                            <input type="text" class="scb-input scb-cat-rename-input" value="${Utils.escHtml(cat.name)}" style="flex:1;font-size:13px;padding:6px 10px;">
+                            <button type="button" class="scb-btn scb-btn--sm scb-btn--primary scb-cat-rename-save" style="padding:6px 12px;font-size:12px;font-weight:600;">Save</button>
+                            <button type="button" class="scb-btn scb-btn--sm scb-btn--secondary scb-cat-rename-cancel" style="padding:6px 8px;font-size:12px;">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Bind Rename triggers
+                listEl.querySelectorAll('.scb-cat-rename-trigger').forEach(btn => {
+                    btn.onclick = () => {
+                        const row = btn.closest('.scb-cat-row');
+                        row.querySelector('.scb-cat-view').style.display = 'none';
+                        const editDiv = row.querySelector('.scb-cat-edit');
+                        editDiv.style.display = 'flex';
+                        const input = editDiv.querySelector('.scb-cat-rename-input');
+                        input.focus();
+                        input.select();
+                    };
+                });
+
+                // Bind Cancel Rename
+                listEl.querySelectorAll('.scb-cat-rename-cancel').forEach(btn => {
+                    btn.onclick = () => {
+                        const row = btn.closest('.scb-cat-row');
+                        row.querySelector('.scb-cat-edit').style.display = 'none';
+                        row.querySelector('.scb-cat-view').style.display = 'flex';
+                    };
+                });
+
+                // Bind Save Rename
+                listEl.querySelectorAll('.scb-cat-rename-save').forEach(btn => {
+                    btn.onclick = async () => {
+                        const row = btn.closest('.scb-cat-row');
+                        const key = row.dataset.key;
+                        const input = row.querySelector('.scb-cat-rename-input');
+                        const newName = (input?.value || '').trim();
+                        if (!newName) {
+                            Toast.error('Category Name Required', 'Please enter a valid name.');
+                            return;
+                        }
+
+                        let categories = CONFIG.clinicCategories || [];
+                        const target = categories.find(c => c.key === key);
+                        if (target) {
+                            target.name = newName;
+                            CONFIG.clinicCategories = categories;
+                            this._syncCategoryDropdowns();
+                            renderCategories();
+                            Toast.success('Category Updated', `Category renamed to "${newName}".`);
+                            Api.post('settings', { clinic_categories: categories }).catch(console.warn);
+                            this.loadSlots();
+                        }
+                    };
+                });
+
+                // Bind Delete
+                listEl.querySelectorAll('.scb-cat-del-trigger').forEach(btn => {
+                    btn.onclick = async () => {
+                        const row = btn.closest('.scb-cat-row');
+                        const key = row.dataset.key;
+                        let categories = CONFIG.clinicCategories || [];
+
+                        if (categories.length <= 1) {
+                            Toast.error('Cannot Delete', 'At least one clinic category must remain.');
+                            return;
+                        }
+
+                        const target = categories.find(c => c.key === key);
+                        const targetName = target ? target.name : key;
+                        const fallbackName = categories.find(c => c.key !== key)?.name || 'Default';
+
+                        if (!confirm(`Are you sure you want to delete category "${targetName}"?\n\nAny clinic slots currently using this category will automatically be reassigned to "${fallbackName}".`)) {
+                            return;
+                        }
+
+                        categories = categories.filter(c => c.key !== key);
+                        CONFIG.clinicCategories = categories;
+                        this._syncCategoryDropdowns();
+                        renderCategories();
+                        Toast.success('Category Deleted', `Category "${targetName}" removed.`);
+                        try {
+                            await Api.post('settings', { clinic_categories: categories });
+                            this.loadSlots();
+                        } catch (err) {
+                            console.warn(err);
+                        }
+                    };
+                });
+            };
+
+            Modal.open({
+                title: 'Manage Clinic Categories',
+                content: `
+                    <div style="margin-bottom:16px;">
+                        <p style="font-size:13px;color:var(--scb-text-muted);margin:0 0 12px 0;">
+                            Create, rename, or delete clinic categories. Dropdowns, filters, and clinic slots will update automatically.
+                        </p>
+                        <div style="background:#f1f5f9;padding:12px 14px;border-radius:8px;border:1px solid #cbd5e1;display:flex;gap:8px;align-items:center;">
+                            <input type="text" class="scb-input" id="scb-manage-cat-input" placeholder="e.g. Senior Clinic, Women's Clinic" style="flex:1;font-size:13px;padding:8px 12px;background:#fff;">
+                            <button type="button" class="scb-btn scb-btn--primary" id="scb-manage-cat-add-btn" style="white-space:nowrap;padding:8px 16px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Category
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="font-size:11px;font-weight:700;color:var(--scb-text-muted);text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;">Existing Categories</div>
+                    <div id="scb-manage-cats-list" style="max-height:300px;overflow-y:auto;padding-right:2px;">
+                    </div>
+                `,
+                footer: `
+                    <button class="scb-btn scb-btn--primary" data-modal-close>Done</button>
+                `
+            });
+
+            renderCategories();
+
+            // Bind Add Category
+            const addInput = document.getElementById('scb-manage-cat-input');
+            const addBtn = document.getElementById('scb-manage-cat-add-btn');
+
+            if (addBtn && addInput) {
+                const handleAdd = () => {
+                    const rawName = (addInput.value || '').trim();
+                    if (!rawName) {
+                        Toast.error('Category Name Required', 'Please enter a name for the new category.');
+                        addInput.focus();
+                        return;
+                    }
+
+                    let key = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                    if (!key) key = 'clinic-' + Date.now();
+
+                    let categories = CONFIG.clinicCategories || [];
+                    if (categories.find(c => c.key === key || c.name.toLowerCase() === rawName.toLowerCase())) {
+                        Toast.error('Category Exists', `A category named "${rawName}" already exists.`);
+                        addInput.focus();
+                        return;
+                    }
+
+                    categories.push({ key, name: rawName });
+                    CONFIG.clinicCategories = categories;
+                    this._syncCategoryDropdowns();
+                    renderCategories();
+                    addInput.value = '';
+                    Toast.success('Category Added', `Category "${rawName}" added.`);
+                    Api.post('settings', { clinic_categories: categories }).catch(console.warn);
+                };
+
+                addBtn.addEventListener('click', handleAdd);
+                addInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAdd();
+                    }
+                });
+            }
+        },
+
         openAddModal() {
             const categories = CONFIG.clinicCategories || [
                 { key: 'junior', name: 'Junior Clinic' },
@@ -2234,22 +2452,28 @@ const SCB = (function ($) {
                         <div class="scb-form-group">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                 <label class="scb-form-label" for="scb-new-slot-cat" style="margin-bottom:0;">Category *</label>
-                                <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary" id="scb-btn-add-cat-toggle" title="Add New Category" style="padding:2px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border-radius:6px;cursor:pointer;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;">
-                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                    <span>Add Category</span>
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary" id="scb-btn-add-cat-toggle" title="Add, Rename, or Delete Categories" style="padding:2px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;border-radius:6px;cursor:pointer;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    <span>Manage Categories</span>
                                 </button>
                             </div>
                             <select class="scb-select" id="scb-new-slot-cat">
                                 ${categoryOptionsHtml}
                             </select>
 
-                            <!-- Inline quick-add category form -->
-                            <div id="scb-inline-cat-box" style="display:none;margin-top:8px;padding:10px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;">
-                                <div style="font-size:11px;font-weight:700;color:var(--scb-text-muted);margin-bottom:6px;text-transform:uppercase;">New Category Name</div>
-                                <div style="display:flex;gap:6px;">
+                            <!-- Inline quick-manage category box -->
+                            <div id="scb-inline-cat-box" style="display:none;margin-top:8px;padding:12px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                    <span style="font-size:11px;font-weight:700;color:var(--scb-text-muted);text-transform:uppercase;">Add New Category</span>
+                                    <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary" id="scb-close-inline-cat-btn" style="padding:2px 6px;font-size:11px;">✕</button>
+                                </div>
+                                <div style="display:flex;gap:6px;margin-bottom:10px;">
                                     <input type="text" class="scb-input" id="scb-new-cat-input" placeholder="e.g. Senior Clinic, Women's Clinic" style="font-size:13px;padding:6px 10px;">
-                                    <button type="button" class="scb-btn scb-btn--sm scb-btn--primary" id="scb-save-new-cat-btn" style="padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;">Save</button>
-                                    <button type="button" class="scb-btn scb-btn--sm scb-btn--secondary" id="scb-cancel-new-cat-btn" style="padding:6px 8px;font-size:12px;">✕</button>
+                                    <button type="button" class="scb-btn scb-btn--sm scb-btn--primary" id="scb-save-new-cat-btn" style="padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;">+ Add</button>
+                                </div>
+
+                                <div style="font-size:11px;font-weight:700;color:var(--scb-text-muted);margin-bottom:6px;text-transform:uppercase;">Categories (Rename / Delete):</div>
+                                <div id="scb-inline-cat-items" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
                                 </div>
                             </div>
                         </div>
@@ -2271,33 +2495,130 @@ const SCB = (function ($) {
 
             const toggleCatBtn = document.getElementById('scb-btn-add-cat-toggle');
             const inlineCatBox = document.getElementById('scb-inline-cat-box');
+            const closeInlineCatBtn = document.getElementById('scb-close-inline-cat-btn');
             const newCatInput = document.getElementById('scb-new-cat-input');
             const saveCatBtn = document.getElementById('scb-save-new-cat-btn');
-            const cancelCatBtn = document.getElementById('scb-cancel-new-cat-btn');
             const slotCatSelect = document.getElementById('scb-new-slot-cat');
+            const inlineCatItems = document.getElementById('scb-inline-cat-items');
+
+            const renderInlineItems = () => {
+                if (!inlineCatItems) return;
+                const categoriesList = CONFIG.clinicCategories || [];
+                inlineCatItems.innerHTML = categoriesList.map(cat => `
+                    <div class="scb-inline-cat-row" data-key="${Utils.escHtml(cat.key)}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;gap:6px;">
+                        <div class="scb-inline-view" style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                            <span style="font-size:13px;font-weight:600;color:#0f172a;">${Utils.escHtml(cat.name)}</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary scb-inline-rename-trigger" title="Rename" style="padding:2px 6px;font-size:11px;">✏️</button>
+                                <button type="button" class="scb-btn scb-btn--xs scb-btn--danger scb-inline-del-trigger" title="Delete" style="padding:2px 6px;font-size:11px;color:#dc2626;border-color:#fecaca;">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="scb-inline-edit" style="display:none;align-items:center;gap:4px;width:100%;">
+                            <input type="text" class="scb-input scb-inline-rename-input" value="${Utils.escHtml(cat.name)}" style="font-size:12px;padding:4px 6px;flex:1;">
+                            <button type="button" class="scb-btn scb-btn--xs scb-btn--primary scb-inline-rename-save" style="padding:4px 8px;font-size:11px;">Save</button>
+                            <button type="button" class="scb-btn scb-btn--xs scb-btn--secondary scb-inline-rename-cancel" style="padding:4px 6px;font-size:11px;">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Inline Rename trigger
+                inlineCatItems.querySelectorAll('.scb-inline-rename-trigger').forEach(b => {
+                    b.onclick = () => {
+                        const row = b.closest('.scb-inline-cat-row');
+                        row.querySelector('.scb-inline-view').style.display = 'none';
+                        const editEl = row.querySelector('.scb-inline-edit');
+                        editEl.style.display = 'flex';
+                        const inp = editEl.querySelector('.scb-inline-rename-input');
+                        inp.focus();
+                        inp.select();
+                    };
+                });
+
+                // Inline Rename cancel
+                inlineCatItems.querySelectorAll('.scb-inline-rename-cancel').forEach(b => {
+                    b.onclick = () => {
+                        const row = b.closest('.scb-inline-cat-row');
+                        row.querySelector('.scb-inline-edit').style.display = 'none';
+                        row.querySelector('.scb-inline-view').style.display = 'flex';
+                    };
+                });
+
+                // Inline Rename save
+                inlineCatItems.querySelectorAll('.scb-inline-rename-save').forEach(b => {
+                    b.onclick = async () => {
+                        const row = b.closest('.scb-inline-cat-row');
+                        const key = row.dataset.key;
+                        const inp = row.querySelector('.scb-inline-rename-input');
+                        const val = (inp?.value || '').trim();
+                        if (!val) {
+                            Toast.error('Name Required', 'Please enter a valid category name.');
+                            return;
+                        }
+
+                        let categoriesList = CONFIG.clinicCategories || [];
+                        const target = categoriesList.find(c => c.key === key);
+                        if (target) {
+                            target.name = val;
+                            CONFIG.clinicCategories = categoriesList;
+                            this._syncCategoryDropdowns(slotCatSelect ? slotCatSelect.value : null);
+                            renderInlineItems();
+                            Toast.success('Category Updated', `Category renamed to "${val}".`);
+                            Api.post('settings', { clinic_categories: categoriesList }).catch(console.warn);
+                        }
+                    };
+                });
+
+                // Inline Delete
+                inlineCatItems.querySelectorAll('.scb-inline-del-trigger').forEach(b => {
+                    b.onclick = async () => {
+                        const row = b.closest('.scb-inline-cat-row');
+                        const key = row.dataset.key;
+                        let categoriesList = CONFIG.clinicCategories || [];
+
+                        if (categoriesList.length <= 1) {
+                            Toast.error('Cannot Delete', 'At least one category must remain.');
+                            return;
+                        }
+
+                        const target = categoriesList.find(c => c.key === key);
+                        const targetName = target ? target.name : key;
+                        const fallbackName = categoriesList.find(c => c.key !== key)?.name || 'Default';
+
+                        if (!confirm(`Are you sure you want to delete category "${targetName}"?\n\nAny clinic slots using this category will be reassigned to "${fallbackName}".`)) {
+                            return;
+                        }
+
+                        categoriesList = categoriesList.filter(c => c.key !== key);
+                        CONFIG.clinicCategories = categoriesList;
+                        this._syncCategoryDropdowns();
+                        renderInlineItems();
+                        Toast.success('Category Deleted', `Category "${targetName}" removed.`);
+                        Api.post('settings', { clinic_categories: categoriesList }).catch(console.warn);
+                    };
+                });
+            };
 
             if (toggleCatBtn && inlineCatBox) {
                 toggleCatBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     const isVisible = inlineCatBox.style.display !== 'none';
                     inlineCatBox.style.display = isVisible ? 'none' : 'block';
-                    if (!isVisible && newCatInput) {
-                        newCatInput.focus();
+                    if (!isVisible) {
+                        renderInlineItems();
+                        if (newCatInput) newCatInput.focus();
                     }
                 });
             }
 
-            if (cancelCatBtn && inlineCatBox) {
-                cancelCatBtn.addEventListener('click', (e) => {
+            if (closeInlineCatBtn && inlineCatBox) {
+                closeInlineCatBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     inlineCatBox.style.display = 'none';
-                    if (newCatInput) newCatInput.value = '';
                 });
             }
 
             if (saveCatBtn && newCatInput && slotCatSelect) {
-                saveCatBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
+                const handleInlineAdd = () => {
                     const rawName = (newCatInput.value || '').trim();
                     if (!rawName) {
                         Toast.error('Category Name Required', 'Please enter a name for the new category.');
@@ -2305,13 +2626,9 @@ const SCB = (function ($) {
                         return;
                     }
 
-                    // Generate clean key/slug
                     let key = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
                     if (!key) key = 'clinic-' + Date.now();
 
-                    const formattedName = rawName;
-
-                    // Check if already exists
                     let categoriesList = CONFIG.clinicCategories || [];
                     const exists = categoriesList.find(c => c.key === key || c.name.toLowerCase() === rawName.toLowerCase());
 
@@ -2323,37 +2640,29 @@ const SCB = (function ($) {
                         return;
                     }
 
-                    // Add new category
-                    const newCatObj = { key: key, name: formattedName };
+                    const newCatObj = { key: key, name: rawName };
                     categoriesList.push(newCatObj);
                     CONFIG.clinicCategories = categoriesList;
 
-                    // Add option to modal dropdown and select it
-                    const opt = document.createElement('option');
-                    opt.value = key;
-                    opt.textContent = formattedName;
-                    opt.selected = true;
-                    slotCatSelect.appendChild(opt);
-
-                    // Also add to the toolbar filter dropdown if present
-                    const filterCatSelect = document.getElementById('scb-clinics-category');
-                    if (filterCatSelect) {
-                        const filterOpt = document.createElement('option');
-                        filterOpt.value = key;
-                        filterOpt.textContent = formattedName;
-                        filterCatSelect.appendChild(filterOpt);
-                    }
-
-                    // Hide inline box and clear input
-                    inlineCatBox.style.display = 'none';
+                    this._syncCategoryDropdowns(key);
+                    renderInlineItems();
                     newCatInput.value = '';
+                    Toast.success('Category Added', `Category "${rawName}" added and selected.`);
 
-                    Toast.success('Category Added', `Category "${formattedName}" added and selected.`);
-
-                    // Persist to backend settings in background
                     Api.post('settings', { clinic_categories: categoriesList }).catch(err => {
                         console.warn('Could not persist category to settings:', err);
                     });
+                };
+
+                saveCatBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    handleInlineAdd();
+                });
+                newCatInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleInlineAdd();
+                    }
                 });
             }
 
@@ -2407,26 +2716,45 @@ const SCB = (function ($) {
             });
         },
 
-        openEditModal(id, cap, price, status, notes) {
+        openEditModal(id, cap, price, status, notes, currentCat = 'junior') {
+            const categories = CONFIG.clinicCategories || [
+                { key: 'junior', name: 'Junior Clinic' },
+                { key: 'adult',  name: 'Adult Clinic' }
+            ];
+
+            const categoryOptionsHtml = categories.map(c => 
+                `<option value="${Utils.escHtml(c.key)}" ${c.key === currentCat ? 'selected' : ''}>${Utils.escHtml(c.name)}</option>`
+            ).join('');
+
             Modal.open({
                 title: 'Edit Clinic Slot',
                 content: `
-                    <div class="scb-form-group">
-                        <label class="scb-form-label" for="scb-edit-cap">Capacity</label>
-                        <input type="number" class="scb-input" id="scb-edit-cap" value="${cap}" min="1">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="scb-form-group">
+                            <label class="scb-form-label" for="scb-edit-cat">Category</label>
+                            <select class="scb-select" id="scb-edit-cat">
+                                ${categoryOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="scb-form-group">
+                            <label class="scb-form-label" for="scb-edit-status">Status</label>
+                            <select class="scb-select" id="scb-edit-status">
+                                <option value="open" ${status === 'open' ? 'selected' : ''}>Open</option>
+                                <option value="full" ${status === 'full' ? 'selected' : ''}>Full</option>
+                                <option value="closed" ${status === 'closed' ? 'selected' : ''}>Closed</option>
+                                <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="scb-form-group">
-                        <label class="scb-form-label" for="scb-edit-price">Price ($)</label>
-                        <input type="number" step="0.5" class="scb-input" id="scb-edit-price" value="${price}">
-                    </div>
-                    <div class="scb-form-group">
-                        <label class="scb-form-label" for="scb-edit-status">Status</label>
-                        <select class="scb-select" id="scb-edit-status">
-                            <option value="open" ${status === 'open' ? 'selected' : ''}>Open</option>
-                            <option value="full" ${status === 'full' ? 'selected' : ''}>Full</option>
-                            <option value="closed" ${status === 'closed' ? 'selected' : ''}>Closed</option>
-                            <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                        </select>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div class="scb-form-group">
+                            <label class="scb-form-label" for="scb-edit-cap">Capacity</label>
+                            <input type="number" class="scb-input" id="scb-edit-cap" value="${cap}" min="1">
+                        </div>
+                        <div class="scb-form-group">
+                            <label class="scb-form-label" for="scb-edit-price">Price ($)</label>
+                            <input type="number" step="0.5" class="scb-input" id="scb-edit-price" value="${price}">
+                        </div>
                     </div>
                     <div class="scb-form-group">
                         <label class="scb-form-label" for="scb-edit-notes">Notes</label>
@@ -2446,6 +2774,7 @@ const SCB = (function ($) {
                     submitBtn.textContent = 'Saving…';
                 }
 
+                const newCat = document.getElementById('scb-edit-cat')?.value || 'junior';
                 const newCap = document.getElementById('scb-edit-cap')?.value || 15;
                 const newPrice = document.getElementById('scb-edit-price')?.value || 25;
                 const newStatus = document.getElementById('scb-edit-status')?.value || 'open';
@@ -2453,6 +2782,7 @@ const SCB = (function ($) {
 
                 try {
                     const res = await Api.post(`clinic-slots/${id}`, {
+                        category: newCat,
                         capacity: newCap,
                         price: newPrice,
                         status: newStatus,

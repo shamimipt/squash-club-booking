@@ -182,6 +182,7 @@ class Assets {
                 'semiPrivatePrice'  => floatval( \SquashClubBooking\Core\Settings::get( 'lesson_price_semi_private', 40.00 ) ),
                 'clinicPriceJunior' => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_junior', 25.00 ) ),
                 'clinicPriceAdult'  => floatval( \SquashClubBooking\Core\Settings::get( 'clinic_price_adult', 30.00 ) ),
+                'clinicCategories'  => \SquashClubBooking\Core\Settings::get_clinic_categories(),
                 'strings'     => $this->get_frontend_js_strings(),
             ]
         );
