@@ -20,6 +20,7 @@
         semiPrivatePrice: (typeof scbFrontend !== 'undefined' && scbFrontend.semiPrivatePrice) ? scbFrontend.semiPrivatePrice : 40,
         clinicPriceJunior: (typeof scbFrontend !== 'undefined' && scbFrontend.clinicPriceJunior) ? scbFrontend.clinicPriceJunior : 25,
         clinicPriceAdult: (typeof scbFrontend !== 'undefined' && scbFrontend.clinicPriceAdult) ? scbFrontend.clinicPriceAdult : 30,
+        clinicCategories: (typeof scbFrontend !== 'undefined' && Array.isArray(scbFrontend.clinicCategories)) ? scbFrontend.clinicCategories : [],
     };
 
     /**
@@ -123,6 +124,9 @@
         },
         formatClinicCategory(cat) {
             if (!cat) return 'Squash Clinic';
+            const list = CONFIG.clinicCategories || [];
+            const found = list.find(c => c.key === cat);
+            if (found) return found.name;
             if (cat === 'junior') return 'Junior Clinic';
             if (cat === 'adult') return 'Adult Clinic';
             const clean = cat.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -335,7 +339,7 @@
                     <div class="scb-fe-card">
                         <div>
                             <div class="scb-fe-card__badge-bar">
-                                <span class="scb-fe-badge scb-fe-badge--${Utils.escHtml(s.category)}">${Utils.escHtml(Utils.formatClinicCategory(s.category))}</span>
+                                <span class="scb-fe-badge scb-fe-badge--category scb-fe-badge--${Utils.escHtml(s.category)}">${Utils.escHtml(Utils.formatClinicCategory(s.category))}</span>
                                 <span class="scb-fe-badge scb-fe-badge--${isFull ? 'full' : 'open'}">${isFull ? 'Waitlist Open' : spotsLeft + ' spots left'}</span>
                             </div>
                             <div class="scb-fe-card__time">${s.start_time.substring(0, 5)} - ${s.end_time.substring(0, 5)}</div>
