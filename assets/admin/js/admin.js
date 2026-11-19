@@ -1271,35 +1271,78 @@ const SCB = (function ($) {
             const tbody = document.getElementById('scb-bookings-tbody');
             if (!tbody) return;
 
-            // Dropdown toggles.
+            const closeAllMenus = () => {
+                document.querySelectorAll('.scb-dropdown__menu').forEach(m => {
+                    m.hidden = true;
+                    m.style.position = '';
+                    m.style.top = '';
+                    m.style.bottom = '';
+                    m.style.left = '';
+                    m.style.right = '';
+                    m.style.zIndex = '';
+                });
+            };
+
+            // Dropdown toggles with smart viewport positioning (escapes table overflow clipping).
             tbody.querySelectorAll('.scb-dropdown-toggle').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const menu = btn.nextElementSibling;
-                    const isOpen = !menu.hidden;
-                    // Close all open menus.
-                    document.querySelectorAll('.scb-dropdown__menu').forEach(m => m.hidden = true);
-                    if (!isOpen) menu.hidden = false;
+                    if (!menu) return;
+                    const isOpen = !menu.hidden && menu.style.display !== 'none';
+
+                    // Close all open menus first.
+                    closeAllMenus();
+
+                    if (!isOpen) {
+                        menu.hidden = false;
+
+                        // Position fixed relative to viewport so it is never clipped by table overflow
+                        const rect = btn.getBoundingClientRect();
+                        const menuHeight = menu.offsetHeight || 190;
+                        const spaceBelow = window.innerHeight - rect.bottom;
+                        const spaceAbove = rect.top;
+
+                        menu.style.position = 'fixed';
+                        menu.style.zIndex = '99999';
+                        menu.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+                        menu.style.left = 'auto';
+
+                        // Auto-flip: if not enough space below, open upwards (dropup)
+                        if (spaceBelow < menuHeight + 15 && spaceAbove > menuHeight + 15) {
+                            menu.style.top = 'auto';
+                            menu.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+                        } else {
+                            menu.style.top = `${rect.bottom + 6}px`;
+                            menu.style.bottom = 'auto';
+                        }
+                    }
                 });
             });
 
-            // Close dropdowns on outside click.
+            // Close dropdowns on outside click, window resize, or scroll.
             if (!this._dropdownDocBound) {
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.scb-dropdown')) {
-                        document.querySelectorAll('.scb-dropdown__menu').forEach(m => m.hidden = true);
+                        closeAllMenus();
                     }
                 });
+                window.addEventListener('scroll', closeAllMenus, { passive: true, capture: true });
+                window.addEventListener('resize', closeAllMenus, { passive: true });
                 this._dropdownDocBound = true;
             }
 
-            // Action handlers.
-            tbody.addEventListener('click', (e) => {
-                const item = e.target.closest('[data-action]');
-                if (!item) return;
-                const { action, id } = item.dataset;
-                this._handleAction(action, id);
-            });
+            // Action handlers (bound once).
+            if (!this._rowActionsBound) {
+                tbody.addEventListener('click', (e) => {
+                    const item = e.target.closest('[data-action]');
+                    if (!item) return;
+                    closeAllMenus();
+                    const { action, id } = item.dataset;
+                    this._handleAction(action, id);
+                });
+                this._rowActionsBound = true;
+            }
         },
 
         async _handleAction(action, id) {
