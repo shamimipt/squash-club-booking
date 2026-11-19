@@ -80,6 +80,12 @@ class RestApi {
             'permission_callback' => [ $this, 'require_manage_bookings' ],
         ] );
 
+        register_rest_route( self::NAMESPACE, '/bookings/(?P<id>\d+)/refund', [
+            'methods'             => \WP_REST_Server::CREATABLE,
+            'callback'            => [ '\SquashClubBooking\Admin\Controllers\BookingController', 'refund' ],
+            'permission_callback' => [ $this, 'require_manage_bookings' ],
+        ] );
+
         register_rest_route( self::NAMESPACE, '/bookings/(?P<id>\d+)/reschedule', [
             'methods'             => \WP_REST_Server::CREATABLE,
             'callback'            => [ '\SquashClubBooking\Admin\Controllers\BookingController', 'reschedule' ],

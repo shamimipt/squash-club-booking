@@ -1260,6 +1260,12 @@ const SCB = (function ($) {
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                                     Cancel
                                 </button>` : ''}
+                                ${b.payment_status === 'paid' ? `
+                                <div class="scb-dropdown__sep"></div>
+                                <button class="scb-dropdown__item" data-action="refund" data-id="${b.id}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 0 1 5 5v2"/><path d="M3 10l5-5"/><path d="M3 10l5 5"/></svg>
+                                    Mark as Refunded
+                                </button>` : ''}
                             </div>
                         </div>
                     </td>
@@ -1271,35 +1277,78 @@ const SCB = (function ($) {
             const tbody = document.getElementById('scb-bookings-tbody');
             if (!tbody) return;
 
-            // Dropdown toggles.
+            const closeAllMenus = () => {
+                document.querySelectorAll('.scb-dropdown__menu').forEach(m => {
+                    m.hidden = true;
+                    m.style.position = '';
+                    m.style.top = '';
+                    m.style.bottom = '';
+                    m.style.left = '';
+                    m.style.right = '';
+                    m.style.zIndex = '';
+                });
+            };
+
+            // Dropdown toggles with smart viewport positioning (escapes table overflow clipping).
             tbody.querySelectorAll('.scb-dropdown-toggle').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const menu = btn.nextElementSibling;
-                    const isOpen = !menu.hidden;
-                    // Close all open menus.
-                    document.querySelectorAll('.scb-dropdown__menu').forEach(m => m.hidden = true);
-                    if (!isOpen) menu.hidden = false;
+                    if (!menu) return;
+                    const isOpen = !menu.hidden && menu.style.display !== 'none';
+
+                    // Close all open menus first.
+                    closeAllMenus();
+
+                    if (!isOpen) {
+                        menu.hidden = false;
+
+                        // Position fixed relative to viewport so it is never clipped by table overflow
+                        const rect = btn.getBoundingClientRect();
+                        const menuHeight = menu.offsetHeight || 190;
+                        const spaceBelow = window.innerHeight - rect.bottom;
+                        const spaceAbove = rect.top;
+
+                        menu.style.position = 'fixed';
+                        menu.style.zIndex = '99999';
+                        menu.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+                        menu.style.left = 'auto';
+
+                        // Auto-flip: if not enough space below, open upwards (dropup)
+                        if (spaceBelow < menuHeight + 15 && spaceAbove > menuHeight + 15) {
+                            menu.style.top = 'auto';
+                            menu.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+                        } else {
+                            menu.style.top = `${rect.bottom + 6}px`;
+                            menu.style.bottom = 'auto';
+                        }
+                    }
                 });
             });
 
-            // Close dropdowns on outside click.
+            // Close dropdowns on outside click, window resize, or scroll.
             if (!this._dropdownDocBound) {
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.scb-dropdown')) {
-                        document.querySelectorAll('.scb-dropdown__menu').forEach(m => m.hidden = true);
+                        closeAllMenus();
                     }
                 });
+                window.addEventListener('scroll', closeAllMenus, { passive: true, capture: true });
+                window.addEventListener('resize', closeAllMenus, { passive: true });
                 this._dropdownDocBound = true;
             }
 
-            // Action handlers.
-            tbody.addEventListener('click', (e) => {
-                const item = e.target.closest('[data-action]');
-                if (!item) return;
-                const { action, id } = item.dataset;
-                this._handleAction(action, id);
-            });
+            // Action handlers (bound once).
+            if (!this._rowActionsBound) {
+                tbody.addEventListener('click', (e) => {
+                    const item = e.target.closest('[data-action]');
+                    if (!item) return;
+                    closeAllMenus();
+                    const { action, id } = item.dataset;
+                    this._handleAction(action, id);
+                });
+                this._rowActionsBound = true;
+            }
         },
 
         async _handleAction(action, id) {
@@ -1308,6 +1357,7 @@ const SCB = (function ($) {
                 case 'approve': return this._approveBooking(id);
                 case 'reject': return this._rejectBooking(id);
                 case 'cancel': return this._cancelBooking(id);
+                case 'refund': return this._refundBooking(id);
                 case 'reschedule': return this._rescheduleBooking(id);
             }
         },
@@ -1368,12 +1418,22 @@ const SCB = (function ($) {
                 `;
                 Modal.footer.innerHTML = `
                     <button class="scb-btn scb-btn--secondary" id="scb-modal-close-btn" data-modal-close>Close</button>
+                    ${b.payment_status === 'paid' ? `
+                        <button class="scb-btn scb-btn--secondary" id="scb-modal-refund-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"><path d="M3 10h10a5 5 0 0 1 5 5v2"/><path d="M3 10l5-5"/><path d="M3 10l5 5"/></svg>
+                            Mark as Refunded
+                        </button>
+                    ` : ''}
                     ${b.booking_status === 'pending' ? `
                         <button class="scb-btn scb-btn--danger" id="scb-modal-reject-btn">Reject</button>
                         <button class="scb-btn scb-btn--success" id="scb-modal-approve-btn">Approve</button>
                     ` : ''}
                 `;
                 document.getElementById('scb-modal-close-btn')?.addEventListener('click', () => Modal.close());
+                document.getElementById('scb-modal-refund-btn')?.addEventListener('click', () => {
+                    Modal.close();
+                    this._refundBooking(id);
+                });
                 document.getElementById('scb-modal-approve-btn')?.addEventListener('click', () => {
                     Modal.close();
                     this._approveBooking(id);
@@ -1445,6 +1505,29 @@ const SCB = (function ($) {
                 const reason = document.getElementById('scb-cancel-reason')?.value || '';
                 const res = await Api.post(`bookings/${id}/cancel`, { reason });
                 Toast.success(res?.message || CONFIG.strings.booking_cancelled || 'Booking cancelled successfully.');
+                this.loadBookings();
+            } catch (err) {
+                Toast.error(CONFIG.strings.error || 'Action Failed', err.message);
+            }
+        },
+
+        async _refundBooking(id) {
+            const confirmed = await Modal.confirm({
+                title: 'Mark as Refunded',
+                message: 'Are you sure you want to mark this booking payment as refunded? This will update the payment status to Refunded and release any slot if not already cancelled.',
+                body: `<div class="scb-form-group scb-mt-4">
+                    <label class="scb-label">Refund Note / Reason (Optional)</label>
+                    <textarea class="scb-textarea" id="scb-refund-reason" placeholder="Reason for refund…" rows="3"></textarea>
+                </div>`,
+                confirmText: 'Confirm Refund',
+                confirmClass: 'scb-btn--primary',
+            });
+            if (!confirmed) return;
+
+            try {
+                const reason = document.getElementById('scb-refund-reason')?.value || '';
+                const res = await Api.post(`bookings/${id}/refund`, { reason });
+                Toast.success(res?.message || 'Payment marked as refunded.');
                 this.loadBookings();
             } catch (err) {
                 Toast.error(CONFIG.strings.error || 'Action Failed', err.message);

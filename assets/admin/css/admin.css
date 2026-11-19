@@ -1372,6 +1372,7 @@
     border: 1px solid var(--scb-border);
     box-shadow: 0 4px 20px rgba(13, 27, 42, 0.04);
     background: var(--scb-surface);
+    min-height: 220px;
 }
 
 .scb-table {
@@ -2148,11 +2149,11 @@
     top: calc(100% + 8px);
     right: 0;
     min-width: 190px;
-    background: var(--scb-surface);
+    background: #ffffff;
     border: 1px solid var(--scb-border);
-    border-radius: var(--scb-radius);
-    box-shadow: var(--scb-shadow-md);
-    z-index: var(--scb-z-dropdown);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    z-index: 99999;
     padding: 6px;
     animation: scb-fade-in 130ms ease;
 }
